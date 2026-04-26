@@ -1,0 +1,185 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: GL
+        - generic [ref=e7]:
+          - paragraph [ref=e8]: Garuda Lens
+          - paragraph [ref=e9]: Satellite change intelligence workspace
+      - generic [ref=e10]:
+        - link "Workflow" [ref=e11] [cursor=pointer]:
+          - /url: "#workflow"
+        - link "Coverage" [ref=e12] [cursor=pointer]:
+          - /url: "#coverage"
+        - link "Open Dashboard" [ref=e13] [cursor=pointer]:
+          - /url: /dashboard
+          - text: Open Dashboard
+          - img [ref=e14]
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - img [ref=e20]
+          - text: End-to-end feature build complete
+        - generic [ref=e23]:
+          - heading "Protected satellite analysis with presets, NDVI overlays, saved history, and admin control." [level=1] [ref=e24]
+          - paragraph [ref=e25]: Garuda Lens is now a secured web workspace, not a public demo. Analysts can sign in, run multi-region change detection, inspect classified overlays and timelines, export PDF reports, and let admins switch between live and credit-safe demo mode.
+        - generic [ref=e26]:
+          - link "Launch analyst dashboard" [ref=e27] [cursor=pointer]:
+            - /url: /dashboard
+            - text: Launch analyst dashboard
+            - img [ref=e28]
+          - link "Explore features" [ref=e30] [cursor=pointer]:
+            - /url: "#capabilities"
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - paragraph [ref=e33]: Auth
+            - paragraph [ref=e34]: JWT + refresh cookies
+          - generic [ref=e35]:
+            - paragraph [ref=e36]: Reports
+            - paragraph [ref=e37]: Server-generated PDFs
+          - generic [ref=e38]:
+            - paragraph [ref=e39]: Admin
+            - paragraph [ref=e40]: User controls + demo mode
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - paragraph [ref=e45]: Control room snapshot
+            - paragraph [ref=e46]: Presets, overlays, history, and admin settings in one place
+          - generic [ref=e47]: Demo-safe ready
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - generic [ref=e51]:
+                - paragraph [ref=e52]: Run analysis
+                - paragraph [ref=e53]: Preset selector, custom coordinates, RGB or NDVI mode
+              - img [ref=e54]
+            - generic [ref=e58]:
+              - generic [ref=e59]: Delhi · City-wide · 5 years
+              - generic [ref=e60]: NDVI overlay · Report ready
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - paragraph [ref=e63]: History panel
+              - paragraph [ref=e64]: Reopen past runs, delete stale items, or download the PDF again.
+            - generic [ref=e65]:
+              - paragraph [ref=e66]: Admin panel
+              - paragraph [ref=e67]: Toggle demo mode, reset passwords, promote users, and monitor usage.
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - paragraph [ref=e71]: Capabilities
+        - heading "The repo now behaves like a product workspace instead of a one-shot demo." [level=2] [ref=e72]
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - img [ref=e76]
+          - heading "Protected analyst access" [level=3] [ref=e78]
+          - paragraph [ref=e79]: Authentication now gates the change-detection APIs, not just the UI, so live Sentinel workflows are no longer public.
+        - generic [ref=e80]:
+          - img [ref=e82]
+          - heading "Reports and history" [level=3] [ref=e86]
+          - paragraph [ref=e87]: Every run persists its result payload, timeline assets, and a branded PDF report for later retrieval.
+        - generic [ref=e88]:
+          - img [ref=e90]
+          - heading "NDVI and change categories" [level=3] [ref=e93]
+          - paragraph [ref=e94]: RGB overlays, NDVI health views, and land-change categories are packaged into a single analysis flow.
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - paragraph [ref=e99]: Workflow
+          - heading "Four steps from sign-in to export." [level=2] [ref=e100]
+        - generic [ref=e101]: Cookie auth, persisted history, and admin-safe demo mode included
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]: "01"
+          - heading "Authenticate into the workspace" [level=3] [ref=e105]
+          - paragraph [ref=e106]: Sign in or register before opening any Sentinel-backed analysis route.
+        - generic [ref=e107]:
+          - generic [ref=e108]: "02"
+          - heading "Choose a preset or custom region" [level=3] [ref=e109]
+          - paragraph [ref=e110]: Run analyses across Indian metros, global landmarks, or your own coordinates and place names.
+        - generic [ref=e111]:
+          - generic [ref=e112]: "03"
+          - heading "Inspect overlays and metrics" [level=3] [ref=e113]
+          - paragraph [ref=e114]: Review area changed, football-field equivalents, category mix, and NDVI-based vegetation signals.
+        - generic [ref=e115]:
+          - generic [ref=e116]: "04"
+          - heading "Replay or export" [level=3] [ref=e117]
+          - paragraph [ref=e118]: Open the saved run again from history, download the PDF, or let the admin panel manage live/demo mode.
+    - generic [ref=e120]:
+      - generic [ref=e121]:
+        - paragraph [ref=e122]: Coverage
+        - heading "Indian metros and global landmarks are available out of the box." [level=2] [ref=e123]
+        - paragraph [ref=e124]: Presets now cover the required Indian cities plus a few globally useful case-study regions. Analysts can still switch to custom mode and geocode by place name or supply coordinates directly.
+      - generic [ref=e125]:
+        - generic [ref=e127]:
+          - img [ref=e129]
+          - generic [ref=e134]:
+            - paragraph [ref=e135]: Delhi
+            - paragraph [ref=e136]: Preset-ready region
+        - generic [ref=e138]:
+          - img [ref=e140]
+          - generic [ref=e145]:
+            - paragraph [ref=e146]: Mumbai
+            - paragraph [ref=e147]: Preset-ready region
+        - generic [ref=e149]:
+          - img [ref=e151]
+          - generic [ref=e156]:
+            - paragraph [ref=e157]: Pune
+            - paragraph [ref=e158]: Preset-ready region
+        - generic [ref=e160]:
+          - img [ref=e162]
+          - generic [ref=e167]:
+            - paragraph [ref=e168]: Bangalore
+            - paragraph [ref=e169]: Preset-ready region
+        - generic [ref=e171]:
+          - img [ref=e173]
+          - generic [ref=e178]:
+            - paragraph [ref=e179]: Dubai Marina
+            - paragraph [ref=e180]: Preset-ready region
+        - generic [ref=e182]:
+          - img [ref=e184]
+          - generic [ref=e189]:
+            - paragraph [ref=e190]: Singapore Port
+            - paragraph [ref=e191]: Preset-ready region
+        - generic [ref=e193]:
+          - img [ref=e195]
+          - generic [ref=e200]:
+            - paragraph [ref=e201]: Amazon Deforestation Front
+            - paragraph [ref=e202]: Preset-ready region
+    - generic [ref=e204]:
+      - generic [ref=e205]:
+        - paragraph [ref=e206]: Architecture
+        - heading "The stack now reflects the actual repo and runtime constraints." [level=2] [ref=e207]
+        - paragraph [ref=e208]: The frontend is a Next.js control room, the backend is FastAPI with SQLAlchemy persistence, and the Python environment now tolerates missing TensorFlow by falling back to heuristic change masks for demo-safe execution.
+      - generic [ref=e209]:
+        - generic [ref=e211]:
+          - generic [ref=e212]: "1"
+          - paragraph [ref=e214]: Next.js 15 + React 19
+        - generic [ref=e216]:
+          - generic [ref=e217]: "2"
+          - paragraph [ref=e219]: FastAPI + SQLAlchemy persistence
+        - generic [ref=e221]:
+          - generic [ref=e222]: "3"
+          - paragraph [ref=e224]: Sentinel Hub + NDVI analysis
+        - generic [ref=e226]:
+          - generic [ref=e227]: "4"
+          - paragraph [ref=e229]: U-Net change detection with heuristic fallback
+        - generic [ref=e231]:
+          - generic [ref=e232]: "5"
+          - paragraph [ref=e234]: Server-side PDF generation
+        - generic [ref=e236]:
+          - generic [ref=e237]: "6"
+          - paragraph [ref=e239]: Cookie-based JWT session flow
+    - generic [ref=e241]:
+      - generic [ref=e242]:
+        - heading "Open the dashboard and exercise the full workflow." [level=2] [ref=e243]
+        - paragraph [ref=e244]: Authentication, reports, presets, timeline playback, history, NDVI overlays, area estimates, classification, and the admin panel are all surfaced from one entrypoint.
+      - generic [ref=e245]:
+        - link "Open dashboard" [ref=e246] [cursor=pointer]:
+          - /url: /dashboard
+          - text: Open dashboard
+          - img [ref=e247]
+        - generic [ref=e249]:
+          - img [ref=e250]
+          - text: "Seeded admin: admin@garudalens.demo"
+  - button "Open Next.js Dev Tools" [ref=e259] [cursor=pointer]:
+    - img [ref=e260]
+  - alert [ref=e263]

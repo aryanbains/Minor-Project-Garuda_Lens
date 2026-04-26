@@ -1,0 +1,85 @@
+- generic [ref=e1]:
+  - generic [active]:
+    - generic [ref=e92]:
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - navigation [ref=e95]:
+            - button "previous" [disabled] [ref=e96]:
+              - img "previous" [ref=e97]
+            - generic [ref=e99]:
+              - generic [ref=e100]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e101]:
+              - img "next" [ref=e102]
+          - img
+        - generic [ref=e104]:
+          - link "Next.js 15.5.0 (outdated) Turbopack" [ref=e105] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e106]
+            - generic "An outdated version detected (latest is 16.2.4), upgrade is highly recommended!" [ref=e108]: Next.js 15.5.0 (outdated)
+            - generic [ref=e109]: Turbopack
+          - img
+      - dialog "Runtime TypeError" [ref=e111]:
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - generic [ref=e118]: Runtime TypeError
+              - generic [ref=e119]:
+                - button "Copy Error Info" [ref=e120] [cursor=pointer]:
+                  - img [ref=e121]
+                - button "No related documentation found" [disabled] [ref=e123]:
+                  - img [ref=e124]
+                - link "Learn more about enabling Node.js inspector for server code with Chrome DevTools" [ref=e126] [cursor=pointer]:
+                  - /url: https://nextjs.org/docs/app/building-your-application/configuring/debugging#server-side-code
+                  - img [ref=e127]
+            - paragraph [ref=e136]: Cannot read properties of undefined (reading 'map')
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - paragraph [ref=e140]:
+                - img [ref=e142]
+                - generic [ref=e145]: components/GarudaDashboard.tsx (1093:48) @ GarudaDashboard
+                - button "Open in editor" [ref=e146] [cursor=pointer]:
+                  - img [ref=e148]
+              - generic [ref=e151]:
+                - generic [ref=e152]: 1091 | </p>
+                - generic [ref=e153]: 1092 | <div className="mt-3 flex flex-wrap gap-2">
+                - generic [ref=e154]: "> 1093 | {selectedPreset.tags.map((tag) => ("
+                - generic [ref=e155]: "| ^"
+                - generic [ref=e156]: 1094 | <span
+                - generic [ref=e157]: "1095 | key={tag}"
+                - generic [ref=e158]: 1096 | className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700"
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - paragraph [ref=e161]:
+                  - text: Call Stack
+                  - generic [ref=e162]: "13"
+                - button "Show 11 ignore-listed frame(s)" [ref=e163] [cursor=pointer]:
+                  - text: Show 11 ignore-listed frame(s)
+                  - img [ref=e164]
+              - generic [ref=e166]:
+                - generic [ref=e167]:
+                  - text: GarudaDashboard
+                  - button "Open GarudaDashboard in editor" [ref=e168] [cursor=pointer]:
+                    - img [ref=e169]
+                - text: components/GarudaDashboard.tsx (1093:48)
+              - generic [ref=e171]:
+                - generic [ref=e172]:
+                  - text: DashboardPage
+                  - button "Open DashboardPage in editor" [ref=e173] [cursor=pointer]:
+                    - img [ref=e174]
+                - text: app\dashboard\page.tsx (4:10)
+        - generic [ref=e176]:
+          - generic [ref=e177]: "1"
+          - generic [ref=e178]: "2"
+    - generic [ref=e85] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e86]:
+        - img [ref=e87]
+      - generic [ref=e179]:
+        - button "Open issues overlay" [ref=e180]:
+          - generic [ref=e181]:
+            - generic [ref=e182]: "0"
+            - generic [ref=e183]: "1"
+          - generic [ref=e184]: Issue
+        - button "Collapse issues badge" [ref=e185]:
+          - img [ref=e186]
+  - 'heading "Application error: a client-side exception has occurred while loading 127.0.0.1 (see the browser console for more information)." [level=2] [ref=e190]'

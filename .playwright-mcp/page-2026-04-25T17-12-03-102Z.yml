@@ -1,0 +1,265 @@
+- generic [ref=e1]:
+  - generic [ref=e17]:
+    - banner [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]: GL
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - heading "Garuda Lens Control Room" [level=1] [ref=e23]
+            - generic [ref=e24]: Demo mode
+          - paragraph [ref=e25]: Protected multi-region change analysis with NDVI overlays, timeline playback, real-world area estimates, PDF reports, and an admin layer for user control.
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - paragraph [ref=e28]: Garuda Lens Admin
+          - paragraph [ref=e29]: admin@garudalens.demo
+        - button "Sign out" [ref=e30]:
+          - img
+          - text: Sign out
+    - generic [ref=e31]:
+      - complementary [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]: Run Analysis
+              - generic [ref=e37]: Choose a preset or provide a custom location, then persist the run to history.
+            - generic [ref=e38]: RGB mode
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - button "Preset" [ref=e42]
+              - button "Custom" [ref=e43]
+            - generic [ref=e44]:
+              - text: Region preset
+              - combobox [ref=e45]:
+                - option "Delhi · India" [selected]
+                - option "Mumbai · India"
+                - option "Bangalore · India"
+                - option "Hyderabad · India"
+                - option "Pune · India"
+                - option "Chennai · India"
+                - option "Kolkata · India"
+                - option "Ahmedabad · India"
+                - option "Jaipur · India"
+                - option "Surat · India"
+                - option "Dubai Marina · United Arab Emirates"
+                - option "Singapore Port · Singapore"
+                - option "Amazon Deforestation Front · Brazil"
+              - generic [ref=e46]:
+                - paragraph [ref=e47]: Dense mixed urban expansion across NCR edges.
+                - paragraph [ref=e48]: India preset, India
+                - generic [ref=e49]:
+                  - generic [ref=e50]: India
+                  - generic [ref=e51]: india
+                  - generic [ref=e52]: Standard (5m)
+            - generic [ref=e53]:
+              - text: Analysis mode
+              - generic [ref=e54]:
+                - button "RGB change" [ref=e55]:
+                  - img [ref=e56]
+                  - text: RGB change
+                - button "NDVI overlay" [ref=e60]:
+                  - img [ref=e61]
+                  - text: NDVI overlay
+            - generic [ref=e64]:
+              - generic [ref=e65]:
+                - text: Zoom window
+                - combobox [ref=e66]:
+                  - option "City-Wide (0.025°)" [selected]
+                  - option "Block-Level (0.01°)"
+                  - option "Zoomed-In (0.005°)"
+              - generic [ref=e67]:
+                - text: Resolution
+                - combobox [ref=e68]:
+                  - option "Coarse (10m)"
+                  - option "Standard (5m)" [selected]
+                  - option "Fine (2.5m)"
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - text: Before date
+                - textbox [ref=e71]
+              - generic [ref=e72]:
+                - text: After date
+                - textbox [ref=e73]
+            - generic [ref=e74]:
+              - text: Timeline years
+              - combobox [ref=e75]:
+                - option "3 years"
+                - option "4 years"
+                - option "5 years" [selected]
+                - option "6 years"
+                - option "7 years"
+                - option "8 years"
+            - button "Run persisted analysis" [ref=e76]:
+              - img
+              - text: Run persisted analysis
+        - generic [ref=e77]:
+          - generic [ref=e79]:
+            - generic [ref=e80]: History
+            - generic [ref=e81]: Open, filter, download, or remove previously persisted runs.
+          - generic [ref=e83]:
+            - generic [ref=e84]:
+              - img
+              - textbox "Search location or category" [ref=e85]
+            - generic [ref=e88]:
+              - img "Delhi thumbnail" [ref=e90]
+              - generic [ref=e91]:
+                - generic [ref=e92]:
+                  - generic [ref=e93]:
+                    - paragraph [ref=e94]: Delhi
+                    - paragraph [ref=e95]: 15 Jan 2022 to 25 Apr 2026
+                  - generic [ref=e96]: Extreme
+                - generic [ref=e97]:
+                  - generic [ref=e98]: 25.20% changed
+                  - generic [ref=e99]: 25 Apr 2026, 5:06 pm
+                - generic [ref=e100]:
+                  - button "Open" [ref=e101]:
+                    - img
+                    - text: Open
+                  - button "PDF" [ref=e102]:
+                    - img
+                    - text: PDF
+                  - button "Delete" [ref=e103]:
+                    - img
+                    - text: Delete
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]: Admin Panel
+              - generic [ref=e108]: Review user adoption, toggle demo mode, and administer analyst accounts.
+            - img [ref=e109]
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - generic [ref=e124]:
+                - paragraph [ref=e125]: Users
+                - paragraph [ref=e126]: "1"
+              - generic [ref=e127]:
+                - paragraph [ref=e128]: Analyses
+                - paragraph [ref=e129]: "1"
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - paragraph [ref=e133]: Sentinel safety switch
+                - paragraph [ref=e134]: Demo mode keeps browser tests and presentations off live credits.
+              - button "Demo enabled" [ref=e135]
+            - generic [ref=e136]:
+              - paragraph [ref=e137]: Most analyzed locations
+              - generic [ref=e139]: Delhi · 1
+            - generic [ref=e141]:
+              - generic [ref=e142]:
+                - generic [ref=e143]:
+                  - paragraph [ref=e144]: Garuda Lens Admin
+                  - paragraph [ref=e145]: admin@garudalens.demo
+                - generic [ref=e147]: Admin
+              - paragraph [ref=e148]: 1 saved analyses
+              - generic [ref=e149]:
+                - button "Disable" [ref=e150]
+                - button "Revoke admin" [ref=e151]
+                - button "Reset password" [ref=e152]:
+                  - img
+                  - text: Reset password
+      - main [ref=e153]:
+        - generic [ref=e252]:
+          - generic [ref=e254]:
+            - paragraph [ref=e255]: Changed area
+            - paragraph [ref=e256]: 0.847 km²
+            - paragraph [ref=e257]: 119 football fields equivalent
+          - generic [ref=e259]:
+            - paragraph [ref=e260]: Change intensity
+            - paragraph [ref=e261]: 25.20%
+            - paragraph [ref=e262]: 33,875 changed pixels
+          - generic [ref=e264]:
+            - paragraph [ref=e265]: Dominant category
+            - paragraph [ref=e266]: Urban construction
+            - paragraph [ref=e267]: Severity extreme at 5m resolution
+          - generic [ref=e269]:
+            - paragraph [ref=e270]: Estimated credits
+            - paragraph [ref=e271]: "0.00"
+            - paragraph [ref=e272]: No Sentinel credits consumed
+        - generic [ref=e273]:
+          - generic [ref=e274]:
+            - generic [ref=e275]:
+              - generic [ref=e276]: Delhi
+              - generic [ref=e277]: 15 Jan 2022 to 25 Apr 2026 · RGB analysis
+            - generic [ref=e278]:
+              - generic [ref=e279]: Extreme
+              - button "Download PDF" [active] [ref=e280]:
+                - img
+                - text: Download PDF
+          - generic [ref=e282]:
+            - generic [ref=e283]:
+              - generic [ref=e284]:
+                - button "Change overlay" [ref=e285]
+                - button "NDVI overlay" [ref=e286]
+                - button "Category overlay" [ref=e287]
+                - button "Before" [ref=e288]
+                - button "After" [ref=e289]
+                - button "Binary mask" [ref=e290]
+              - img "Delhi overlay" [ref=e292]
+              - paragraph [ref=e293]: Binary change mask blended over the latest RGB frame.
+            - generic [ref=e294]:
+              - generic [ref=e295]:
+                - paragraph [ref=e296]: Coordinates
+                - paragraph [ref=e297]: 28.6139, 77.2090
+                - generic [ref=e298]:
+                  - generic [ref=e299]: City-Wide (0.025°)
+                  - generic [ref=e300]: Demo mode
+                  - generic [ref=e301]: 0 candidate dates
+              - generic [ref=e302]:
+                - generic [ref=e303]:
+                  - img [ref=e304]
+                  - paragraph [ref=e306]: Category breakdown
+                - generic [ref=e307]:
+                  - generic [ref=e309]:
+                    - generic [ref=e310]: Urban construction
+                    - generic [ref=e311]: 58.00% · 19,646
+                  - generic [ref=e315]:
+                    - generic [ref=e316]: Vegetation loss
+                    - generic [ref=e317]: 21.16% · 7,167
+                  - generic [ref=e321]:
+                    - generic [ref=e322]: Bare land exposure
+                    - generic [ref=e323]: 16.22% · 5,494
+                  - generic [ref=e327]:
+                    - generic [ref=e328]: Water body change
+                    - generic [ref=e329]: 6.43% · 2,177
+              - generic [ref=e332]:
+                - generic [ref=e333]:
+                  - img [ref=e334]
+                  - paragraph [ref=e337]: Operational notes
+                - generic [ref=e339]:
+                  - img [ref=e340]
+                  - generic [ref=e342]: Live demo mode is enabled. Results are generated from deterministic sample assets instead of real Sentinel queries.
+        - generic [ref=e343]:
+          - generic [ref=e345]:
+            - generic [ref=e346]: Timeline
+            - generic [ref=e347]: Animated progression and frame-by-frame snapshots across the selected year window.
+          - generic [ref=e349]:
+            - img "Delhi timeline animation" [ref=e351]
+            - generic [ref=e352]:
+              - generic [ref=e353]:
+                - generic [ref=e354]:
+                  - img [ref=e355]
+                  - paragraph [ref=e359]: Timeline facts
+                - generic [ref=e360]:
+                  - generic [ref=e361]:
+                    - paragraph [ref=e362]: Frames
+                    - paragraph [ref=e363]: "5"
+                  - generic [ref=e364]:
+                    - paragraph [ref=e365]: Years covered
+                    - paragraph [ref=e366]: 2022 · 2023 · 2024 · 2025 · 2026
+              - generic [ref=e367]:
+                - generic [ref=e368]:
+                  - img "Delhi 2022" [ref=e369]
+                  - generic [ref=e370]: "2022"
+                - generic [ref=e371]:
+                  - img "Delhi 2023" [ref=e372]
+                  - generic [ref=e373]: "2023"
+                - generic [ref=e374]:
+                  - img "Delhi 2024" [ref=e375]
+                  - generic [ref=e376]: "2024"
+                - generic [ref=e377]:
+                  - img "Delhi 2025" [ref=e378]
+                  - generic [ref=e379]: "2025"
+                - generic [ref=e380]:
+                  - img "Delhi 2026" [ref=e381]
+                  - generic [ref=e382]: "2026"
+  - button "Open Next.js Dev Tools" [ref=e12] [cursor=pointer]:
+    - img [ref=e13]
+  - alert [ref=e16]

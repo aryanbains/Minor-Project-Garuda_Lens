@@ -1,4 +1,4 @@
-tensorflow
+tensorflow; python_version < "3.13"
 numpy
 opencv-python
 gradio
@@ -10,3 +10,6 @@ python-dotenv
 fastapi
 uvicorn[standard]
 pandas
+sqlalchemy
+psycopg[binary]
+reportlab

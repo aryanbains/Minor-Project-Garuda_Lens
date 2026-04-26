@@ -1,0 +1,8 @@
+.venv/
+garuda-backend/.venv/
+garuda-backend/garuda.db
+garuda-backend/.garuda_jwt_secret
+garuda-backend/__pycache__/
+garuda-backend/*.pyc
+garuda_lens/node_modules/
+garuda_lens/.next/

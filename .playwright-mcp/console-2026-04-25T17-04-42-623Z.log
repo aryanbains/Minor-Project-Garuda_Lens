@@ -1,0 +1,27 @@
+[     158ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[     188ms] [LOG] [Fast Refresh] done in 131ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809
+[     316ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:14537
+[     521ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:3000/dashboard:0
+[   21756ms] TypeError: Cannot read properties of undefined (reading 'map')
+    at GarudaDashboard (http://127.0.0.1:3000/_next/static/chunks/_5f669bf3._.js:1880:99)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:13072:24)
+    at renderWithHooks (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:4091:24)
+    at updateFunctionComponent (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:5523:21)
+    at beginWork (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:6111:24)
+    at runWithFiberInDEV (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:886:74)
+    at performUnitOfWork (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8298:97)
+    at workLoopSync (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8190:40)
+    at renderRootSync (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8173:13)
+    at performWorkOnRoot (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:7932:56)
+    at performWorkOnRootViaSchedulerTask (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8882:9)
+    at MessagePort.performWorkUntilDeadline (http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_5150ccfd._.js:2601:64)
+[   74959ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[   75358ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:6282
+[   75366ms] [LOG] [Fast Refresh] done in 514ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809
+[   75623ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[   75670ms] [LOG] [Fast Refresh] done in 148ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809
+[   76245ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:14537
+[   76429ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[   76542ms] [LOG] [Fast Refresh] done in 215ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809
+[   93441ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[   93481ms] [LOG] [Fast Refresh] done in 141ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809

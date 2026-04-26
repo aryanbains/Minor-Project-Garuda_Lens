@@ -1,0 +1,8 @@
+[     166ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[     168ms] [LOG] [Fast Refresh] done in 105ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809
+[     343ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:14537
+[     516ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:3000/dashboard:0
+[   27680ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5949
+[   27711ms] [ERROR] Access to fetch at 'http://127.0.0.1:8000/auth/refresh' from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://127.0.0.1:3000/dashboard:0
+[   27712ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8000/auth/refresh:0
+[   27717ms] [LOG] [Fast Refresh] done in 89ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_client_cf1d9188._.js:5809

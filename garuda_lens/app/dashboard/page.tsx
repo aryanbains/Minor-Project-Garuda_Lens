@@ -1,17 +1,5 @@
-"use client";
+import GarudaDashboard from "@/components/GarudaDashboard";
 
-import dynamic from "next/dynamic";
-
-// Import MapInterface dynamically to avoid SSR issues with Leaflet
-const MapInterface = dynamic(() => import("@/components/MapInterface"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-screen">
-      <div className="text-lg">Loading map...</div>
-    </div>
-  ),
-});
-
-export default function Dashboard() {
-  return <MapInterface />;
+export default function DashboardPage() {
+  return <GarudaDashboard />;
 }

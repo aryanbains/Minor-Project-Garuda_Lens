@@ -1,0 +1,5 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - img [ref=e4]
+    - generic [ref=e6]: Booting Garuda Lens control room...
+  - alert [ref=e7]

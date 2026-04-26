@@ -1,12 +1,12 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import BackgroundTasks, Cookie, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 import uvicorn
 import io
 import base64
-from datetime import datetime
+from datetime import date, datetime, timezone
 import numpy as np
 from PIL import Image
 import cv2
@@ -15,13 +15,17 @@ import os
 import sys
 import asyncio
 import hashlib
+import secrets
 from pathlib import Path
 import json
+from sqlalchemy import func, select
 
 # Import the functions from your existing app.py
 from geopy.geocoders import Nominatim
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
+try:
+    from tensorflow.keras.models import load_model
+except ImportError:
+    load_model = None
 from sentinelhub import (
     SHConfig, BBox, CRS, SentinelHubRequest, MimeType,
     DataCollection, bbox_to_dimensions, SentinelHubCatalog
@@ -29,25 +33,96 @@ from sentinelhub import (
 from dotenv import load_dotenv
 import pandas as pd
 from data_service import data_service
+from garuda_features import (
+    area_sq_km_from_pixels,
+    build_pdf_report,
+    build_report_payload,
+    build_timeline_gif,
+    classification_from_change_masks,
+    create_classification_overlay,
+    demo_analysis_result,
+    find_location_preset,
+    football_fields_from_sq_km,
+    list_location_presets,
+    severity_from_percentage,
+)
+from garuda_schemas import (
+    AdminPasswordResetRequest,
+    AdminUserUpdateRequest,
+    AnalysisEnvelope,
+    AnalysisRunRequest,
+    AuthEnvelope,
+    CompletePasswordResetRequest,
+    DemoModeRequest,
+    HistoryEnvelope,
+    LoginRequest,
+    PasswordResetRequest,
+    RegisterRequest,
+    SessionEnvelope,
+)
+from garuda_store import (
+    ACCESS_TOKEN_COOKIE,
+    ACCESS_TOKEN_TTL_MINUTES,
+    REFRESH_TOKEN_COOKIE,
+    REFRESH_TOKEN_TTL_DAYS,
+    Analysis,
+    Report,
+    User,
+    build_cookie_settings,
+    create_access_token,
+    decode_access_token,
+    get_demo_mode,
+    get_user_from_refresh_token,
+    hash_password,
+    init_store,
+    issue_refresh_token,
+    new_id,
+    revoke_refresh_token,
+    serialize_user,
+    session_scope,
+    set_demo_mode,
+    verify_password,
+)
 
 # Load environment variables
 load_dotenv()
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+MODEL_PATH = Path(__file__).resolve().with_name("unet_model.h5")
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("GARUDA_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    if origin.strip()
+]
 
-# Load the TensorFlow model
-model = load_model("unet_model.h5")
+
+def _load_change_model():
+    if load_model is None:
+        print("[WARN] TensorFlow is unavailable. Falling back to heuristic change masks.")
+        return None
+    if not MODEL_PATH.exists():
+        print(f"[WARN] Model file not found at {MODEL_PATH}. Falling back to heuristic change masks.")
+        return None
+    try:
+        return load_model(MODEL_PATH)
+    except Exception as exc:
+        print(f"[WARN] Failed to load U-Net model: {exc}. Falling back to heuristic change masks.")
+        return None
+
+
+model = _load_change_model()
+init_store()
 
 app = FastAPI(
     title="Unified Geospatial Change Detection API",
     description="Comprehensive satellite-based urban change detection API with both simple and advanced endpoints",
-    version="2.0.0"
+    version="3.0.0"
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +131,99 @@ app.add_middleware(
 # In-memory storage for analysis history
 analysis_history = []
 active_analyses = {}
+
+
+def _token_from_request(
+    request: Request,
+    access_cookie: Optional[str],
+) -> Optional[str]:
+    authorization = request.headers.get("Authorization", "")
+    if authorization.lower().startswith("bearer "):
+        return authorization.split(" ", 1)[1].strip()
+    return access_cookie
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
+    response.delete_cookie(REFRESH_TOKEN_COOKIE, path="/")
+
+
+def _auth_response(user: User, message: str, session) -> JSONResponse:
+    access_token = create_access_token(user)
+    refresh_token = issue_refresh_token(session, user)
+    response = JSONResponse({"message": message, "user": serialize_user(user)})
+    response.set_cookie(
+        ACCESS_TOKEN_COOKIE,
+        access_token,
+        **build_cookie_settings(ACCESS_TOKEN_TTL_MINUTES * 60),
+    )
+    response.set_cookie(
+        REFRESH_TOKEN_COOKIE,
+        refresh_token,
+        **build_cookie_settings(REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60),
+    )
+    return response
+
+
+def require_current_user(
+    request: Request,
+    access_cookie: Optional[str] = Cookie(default=None, alias=ACCESS_TOKEN_COOKIE),
+) -> Dict[str, Any]:
+    user = resolve_current_user(request, access_cookie)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
+
+def resolve_current_user(
+    request: Request,
+    access_cookie: Optional[str] = Cookie(default=None, alias=ACCESS_TOKEN_COOKIE),
+) -> Optional[Dict[str, Any]]:
+    token = _token_from_request(request, access_cookie)
+    if not token:
+        return None
+
+    try:
+        payload = decode_access_token(token)
+    except ValueError:
+        return None
+
+    with session_scope() as session:
+        user = session.get(User, payload["sub"])
+        if not user or not user.is_active:
+            return None
+        return serialize_user(user)
+
+
+def require_admin(current_user: Dict[str, Any] = Depends(require_current_user)) -> Dict[str, Any]:
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+
+def serialize_analysis_row(analysis: Analysis, include_result: bool = False) -> Dict[str, Any]:
+    payload = {
+        "id": analysis.id,
+        "location_name": analysis.location_name,
+        "preset_id": analysis.preset_id,
+        "latitude": analysis.latitude,
+        "longitude": analysis.longitude,
+        "before_date": analysis.before_date,
+        "after_date": analysis.after_date,
+        "change_percentage": analysis.change_percentage,
+        "changed_area_sq_km": analysis.changed_area_sq_km,
+        "football_fields": analysis.football_fields,
+        "severity": analysis.severity,
+        "dominant_change": analysis.dominant_change,
+        "thumbnail": analysis.thumbnail_base64,
+        "demo_mode": analysis.demo_mode,
+        "mode": analysis.mode,
+        "created_at": analysis.created_at.isoformat(),
+        "report_available": analysis.report is not None,
+    }
+    if include_result:
+        payload["result"] = analysis.result_json
+    return payload
 
 # ===== PYDANTIC MODELS =====
 
@@ -244,17 +412,25 @@ def fetch_sentinel_image(lat, lon, date, buffer, resolution):
         return None
 
 def predict_change_mask(before_img, after_img):
-    before_resized = before_img.resize((128, 128))
-    after_resized = after_img.resize((128, 128))
+    before_resized = before_img.resize((128, 128)).convert("RGB")
+    after_resized = after_img.resize((128, 128)).convert("RGB")
 
-    before_array = np.array(before_resized) / 255.0
-    after_array = np.array(after_resized) / 255.0
+    before_array = np.array(before_resized, dtype=np.float32) / 255.0
+    after_array = np.array(after_resized, dtype=np.float32) / 255.0
 
-    combined = np.concatenate([before_array, after_array], axis=-1)
-    input_tensor = np.expand_dims(combined, axis=0)
+    if model is None:
+        diff = np.mean(np.abs(after_array - before_array), axis=-1)
+        before_gray = cv2.cvtColor((before_array * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
+        after_gray = cv2.cvtColor((after_array * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
+        edge_delta = cv2.GaussianBlur(cv2.absdiff(before_gray, after_gray), (5, 5), 0) / 255.0
+        prediction = np.clip(diff * 0.72 + edge_delta * 0.28, 0, 1)
+    else:
+        combined = np.concatenate([before_array, after_array], axis=-1)
+        input_tensor = np.expand_dims(combined, axis=0)
+        prediction = model.predict(input_tensor, verbose=0)[0, :, :, 0]
 
-    prediction = model.predict(input_tensor)[0, :, :, 0]
     binary_mask = (prediction > 0.5).astype(np.uint8) * 255
+    binary_mask = cv2.medianBlur(binary_mask, 3)
     return Image.fromarray(binary_mask).resize(before_img.size)
 
 def overlay_mask_on_image(base_img, mask_img, color=(255, 0, 0), alpha=0.4):
@@ -759,13 +935,94 @@ async def health_check():
     return {
         "status": "healthy",
         "model_loaded": model is not None,
-        "sentinel_hub_configured": CLIENT_ID is not None and CLIENT_SECRET is not None
+        "sentinel_hub_configured": CLIENT_ID is not None and CLIENT_SECRET is not None,
+        "demo_mode_supported": True
+    }
+
+
+@app.get("/location-presets")
+async def get_location_presets():
+    return {"presets": list_location_presets()}
+
+
+@app.post("/auth/register", response_model=AuthEnvelope)
+async def register(request: RegisterRequest):
+    with session_scope() as session:
+        existing = session.scalar(select(User).where(User.email == request.email.lower().strip()))
+        if existing:
+            raise HTTPException(status_code=409, detail="Email is already registered")
+
+        user = User(
+            id=new_id(),
+            email=request.email.lower().strip(),
+            full_name=request.full_name.strip(),
+            password_hash=hash_password(request.password),
+            is_active=True,
+            is_verified=True,
+        )
+        session.add(user)
+        session.flush()
+        return _auth_response(user, "Registration successful", session)
+
+
+@app.post("/auth/login", response_model=AuthEnvelope)
+async def login(request: LoginRequest):
+    with session_scope() as session:
+        user = session.scalar(select(User).where(User.email == request.email.lower().strip()))
+        if not user or not verify_password(request.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is disabled")
+
+        user.last_login_at = datetime.now(timezone.utc)
+        return _auth_response(user, "Login successful", session)
+
+
+@app.post("/auth/refresh", response_model=SessionEnvelope)
+async def refresh_session(refresh_cookie: Optional[str] = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE)):
+    if not refresh_cookie:
+        response = JSONResponse({"message": "No active refresh session", "user": None})
+        _clear_auth_cookies(response)
+        return response
+
+    with session_scope() as session:
+        user = get_user_from_refresh_token(session, refresh_cookie)
+        if not user or not user.is_active:
+            response = JSONResponse({"message": "Refresh session expired", "user": None})
+            _clear_auth_cookies(response)
+            return response
+        revoke_refresh_token(session, refresh_cookie)
+        return _auth_response(user, "Session refreshed", session)
+
+
+@app.post("/auth/logout")
+async def logout(refresh_cookie: Optional[str] = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE)):
+    with session_scope() as session:
+        if refresh_cookie:
+            revoke_refresh_token(session, refresh_cookie)
+    response = JSONResponse({"message": "Logged out"})
+    _clear_auth_cookies(response)
+    return response
+
+
+@app.get("/auth/me")
+async def current_session(
+    request: Request,
+    access_cookie: Optional[str] = Cookie(default=None, alias=ACCESS_TOKEN_COOKIE),
+):
+    current_user = resolve_current_user(request, access_cookie)
+    return {
+        "user": current_user,
+        "message": "Session active" if current_user else "No active session",
     }
 
 # ===== SIMPLE API ENDPOINTS (Original from api_service.py) =====
 
 @app.post("/detect-change", response_model=ChangeDetectionResponse)
-async def detect_change(request: ChangeDetectionRequest):
+async def detect_change(
+    request: ChangeDetectionRequest,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Simple change detection analysis for a given location name
     """
@@ -841,8 +1098,14 @@ async def detect_change(request: ChangeDetectionRequest):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.get("/detect-change/{location}/images/{image_type}")
-async def get_change_image(location: str, image_type: str, zoom_level: str = "City-Wide (0.025°)",
-                          resolution: str = "Standard (5m)", alpha: float = 0.4):
+async def get_change_image(
+    location: str,
+    image_type: str,
+    zoom_level: str = "City-Wide (0.025°)",
+    resolution: str = "Standard (5m)",
+    alpha: float = 0.4,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Get a specific image from change detection analysis as a PNG response
     """
@@ -905,10 +1168,296 @@ async def get_location_coordinates(location: str):
         "longitude": lon
     }
 
+
+def _find_best_date_for_year(lat: float, lon: float, buffer: float, year: int) -> Optional[Dict[str, Any]]:
+    try:
+        config = SHConfig()
+        config.sh_client_id = CLIENT_ID
+        config.sh_client_secret = CLIENT_SECRET
+
+        bbox = BBox([lon - buffer, lat - buffer, lon + buffer, lat + buffer], crs=CRS.WGS84)
+        catalog = SentinelHubCatalog(config=config)
+        search_iterator = catalog.search(
+            DataCollection.SENTINEL2_L2A,
+            bbox=bbox,
+            time=(datetime(year, 1, 1), datetime(year, 12, 31)),
+            filter={"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20.0]},
+            filter_lang="cql2-json",
+            fields={"include": ["properties.datetime", "properties.eo:cloud_cover"], "exclude": []},
+        )
+        rows = []
+        for result in search_iterator:
+            dt = result["properties"]["datetime"][:10]
+            cloud = float(result["properties"].get("eo:cloud_cover") or 100.0)
+            rows.append({"date": dt, "cloud": cloud})
+        if not rows:
+            return None
+        return min(rows, key=lambda item: item["cloud"])
+    except Exception as exc:
+        print(f"Timeline date search failed for {year}: {exc}")
+        return None
+
+
+def _timeline_payload_from_frames(frames: list[tuple[int, Image.Image]], warnings: list[str]) -> Dict[str, Any]:
+    return {
+        "years": [year for year, _ in frames],
+        "frames": [{"year": year, "image": base64.b64encode(_image_bytes(frame)).decode("utf-8")} for year, frame in frames],
+        "gif": build_timeline_gif(frames),
+        "warnings": warnings,
+    }
+
+
+def _image_bytes(image: Image.Image) -> bytes:
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+async def _real_analysis_result(
+    *,
+    location_name: str,
+    preset_id: Optional[str],
+    latitude: float,
+    longitude: float,
+    zoom_level: str,
+    resolution: str,
+    mode: str,
+    before_date: Optional[str],
+    after_date: Optional[str],
+    timeline_years: int,
+) -> Dict[str, Any]:
+    buffer = map_bbox_choice(zoom_level)
+    resolution_m = map_resolution_choice(resolution)
+    start_date, end_date, all_dates = find_smart_dates(latitude, longitude, buffer, before_date, after_date)
+    if not start_date or not end_date:
+        raise HTTPException(status_code=404, detail="Not enough suitable Sentinel-2 imagery for this location")
+
+    before_img, after_img = await asyncio.gather(
+        fetch_ndvi_image(latitude, longitude, start_date, buffer, resolution_m),
+        fetch_ndvi_image(latitude, longitude, end_date, buffer, resolution_m),
+    )
+    if not before_img or not after_img:
+        raise HTTPException(status_code=502, detail="Failed to fetch Sentinel imagery")
+
+    model_mask = predict_change_mask(before_img["rgb"], after_img["rgb"])
+    overlay = overlay_mask_on_image(after_img["rgb"], model_mask, alpha=0.45)
+    ndvi_analysis = compute_ndvi_analysis(before_img["raw"], after_img["raw"])
+    ndvi_visuals = create_ndvi_visualizations(ndvi_analysis, after_img["rgb"])
+
+    mask_array = np.array(model_mask)
+    changed_pixels = int(np.sum(mask_array > 0))
+    total_pixels = int(mask_array.size)
+    change_percentage = round((changed_pixels / max(total_pixels, 1)) * 100, 2)
+    area_sq_km = area_sq_km_from_pixels(changed_pixels, resolution_m)
+    football_fields = football_fields_from_sq_km(area_sq_km)
+    classification = classification_from_change_masks(ndvi_analysis["change_masks"], changed_pixels)
+    dominant_change = max(classification.items(), key=lambda item: item[1]["count"])[0]
+
+    timeline_frames: list[tuple[int, Image.Image]] = []
+    timeline_warnings: list[str] = []
+    if timeline_years > 0:
+        end_year = max(2017, int(end_date[:4]))
+        start_year = max(2017, end_year - timeline_years + 1)
+        for year in range(start_year, end_year + 1):
+            chosen = _find_best_date_for_year(latitude, longitude, buffer, year)
+            if not chosen:
+                timeline_warnings.append(f"No clear imagery available for {year}.")
+                continue
+            image_bundle = await fetch_ndvi_image(latitude, longitude, chosen["date"], buffer, resolution_m)
+            if not image_bundle:
+                timeline_warnings.append(f"Timeline frame generation failed for {year}.")
+                continue
+            timeline_frames.append((year, image_bundle["rgb"].resize((420, 320)).convert("RGB")))
+
+    timeline = _timeline_payload_from_frames(timeline_frames, timeline_warnings)
+    warnings = list(timeline_warnings)
+    if mode == "ndvi":
+        warnings.append("NDVI mode highlights vegetation health and degradation using Sentinel-2 B08/B04 bands.")
+
+    return {
+        "location": {
+            "name": location_name,
+            "preset_id": preset_id,
+            "latitude": latitude,
+            "longitude": longitude,
+        },
+        "dates": {"before": start_date, "after": end_date},
+        "analysis_mode": mode,
+        "demo_mode": False,
+        "warnings": warnings,
+        "statistics": {
+            "changed_pixels": changed_pixels,
+            "total_pixels": total_pixels,
+            "change_percentage": change_percentage,
+            "changed_area_sq_km": area_sq_km,
+            "football_fields": football_fields,
+            "severity": severity_from_percentage(change_percentage),
+            "resolution_m": resolution_m,
+            "estimated_credit_cost": estimate_credit_cost(False, len(timeline_frames)),
+            "timeline_frames": len(timeline_frames),
+        },
+        "classification": classification,
+        "dominant_change": dominant_change,
+        "images": {
+            "before": image_to_base64(before_img["rgb"]),
+            "after": image_to_base64(after_img["rgb"]),
+            "overlay": image_to_base64(overlay),
+            "mask": image_to_base64(model_mask),
+            "ndvi_overlay": ndvi_visuals["change_overlay"],
+            "classification_overlay": create_classification_overlay(after_img["rgb"], ndvi_analysis["change_masks"], mask_array),
+            "thumbnail": image_to_base64(overlay.resize((180, 120))),
+        },
+        "timeline": timeline,
+        "ndvi_summary": ndvi_analysis["ndvi_statistics"],
+        "classification_summary": ndvi_analysis["statistics"],
+        "available_dates_count": len(all_dates),
+        "zoom_level": zoom_level,
+    }
+
+
+def _store_analysis_result(
+    current_user: Dict[str, Any],
+    result: Dict[str, Any],
+) -> str:
+    with session_scope() as session:
+        analysis = Analysis(
+            id=new_id(),
+            user_id=current_user["id"],
+            location_name=result["location"]["name"],
+            preset_id=result["location"].get("preset_id"),
+            latitude=result["location"]["latitude"],
+            longitude=result["location"]["longitude"],
+            before_date=result["dates"]["before"],
+            after_date=result["dates"]["after"],
+            resolution_m=float(result["statistics"]["resolution_m"]),
+            zoom_level=result["zoom_level"],
+            mode=result["analysis_mode"],
+            demo_mode=result["demo_mode"],
+            change_percentage=float(result["statistics"]["change_percentage"]),
+            changed_area_sq_km=float(result["statistics"]["changed_area_sq_km"]),
+            football_fields=int(result["statistics"]["football_fields"]),
+            severity=result["statistics"]["severity"],
+            dominant_change=result["dominant_change"],
+            thumbnail_base64=result["images"].get("thumbnail"),
+            result_json=result,
+        )
+        session.add(analysis)
+        session.flush()
+
+        report_payload = build_report_payload(result, current_user)
+        session.add(
+            Report(
+                id=new_id(),
+                analysis_id=analysis.id,
+                user_id=current_user["id"],
+                payload_json=report_payload,
+            )
+        )
+        return analysis.id
+
+
+@app.post("/analysis/run", response_model=AnalysisEnvelope)
+async def run_analysis(
+    request: AnalysisRunRequest,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
+    preset = find_location_preset(request.preset_id) if request.preset_id else None
+    if preset and not request.location_name:
+        request.location_name = preset["label"]
+
+    if request.coordinates:
+        latitude = request.coordinates.lat
+        longitude = request.coordinates.lon
+    elif preset:
+        latitude = preset["coordinates"]["lat"]
+        longitude = preset["coordinates"]["lon"]
+        request.location_name = preset["label"]
+        request.zoom_level = request.zoom_level or preset["zoomLevel"]
+        request.resolution = request.resolution or preset["resolution"]
+    else:
+        latitude, longitude = get_coordinates(request.location_name)
+        if latitude is None or longitude is None:
+            raise HTTPException(status_code=404, detail="Location not found")
+
+    mode = request.mode.lower() if request.mode.lower() in {"rgb", "ndvi"} else "rgb"
+    with session_scope() as session:
+        demo_mode = get_demo_mode(session) or not (CLIENT_ID and CLIENT_SECRET)
+
+    if demo_mode:
+        default_before = request.before_date or f"{max(2017, date.today().year - request.timeline_years + 1)}-01-15"
+        default_after = request.after_date or date.today().isoformat()
+        result = demo_analysis_result(
+            location_name=request.location_name,
+            preset_id=request.preset_id,
+            latitude=latitude,
+            longitude=longitude,
+            before_date=default_before,
+            after_date=default_after,
+            resolution_m=map_resolution_choice(request.resolution),
+            zoom_level=request.zoom_level,
+            mode=mode,
+            timeline_years=request.timeline_years,
+        )
+    else:
+        result = await _real_analysis_result(
+            location_name=request.location_name,
+            preset_id=request.preset_id,
+            latitude=latitude,
+            longitude=longitude,
+            zoom_level=request.zoom_level,
+            resolution=request.resolution,
+            mode=mode,
+            before_date=request.before_date,
+            after_date=request.after_date,
+            timeline_years=request.timeline_years,
+        )
+
+    analysis_id = _store_analysis_result(current_user, result)
+    result.setdefault(
+        "report",
+        {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "status": "ready",
+        },
+    )
+    result["report"]["download_url"] = f"/reports/{analysis_id}.pdf"
+    return {"analysis_id": analysis_id, "result": result}
+
+
+@app.get("/reports/{analysis_id}.pdf")
+async def download_report(
+    analysis_id: str,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
+    with session_scope() as session:
+        report = session.scalar(
+            select(Report).where(Report.analysis_id == analysis_id, Report.user_id == current_user["id"])
+        )
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        pdf_bytes = build_pdf_report(report.payload_json)
+        # Build a human-friendly filename from the stored location name
+        analysis_row = session.scalar(
+            select(Analysis).where(Analysis.id == analysis_id, Analysis.user_id == current_user["id"])
+        )
+        loc_slug = "report"
+        if analysis_row and analysis_row.location_name:
+            import re as _re
+            loc_slug = _re.sub(r'[^a-zA-Z0-9]+', '-', analysis_row.location_name).strip('-').lower() or "report"
+    safe_filename = f"garuda-report-{loc_slug}.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+    )
+
 # ===== ADVANCED API ENDPOINTS (From geospatial agent) =====
 
 @app.post("/analyze", response_model=AnalysisResponse)
-async def analyze(request: AnalysisRequest):
+async def analyze(
+    request: AnalysisRequest,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Advanced geospatial analysis with detailed response format
     """
@@ -1085,7 +1634,10 @@ async def analyze(request: AnalysisRequest):
         }
 
 @app.post("/analyze/location")
-async def analyze_by_location_name(request: dict):
+async def analyze_by_location_name(
+    request: dict,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Perform geospatial analysis using a location name instead of coordinates
     """
@@ -1127,43 +1679,164 @@ async def search_locations_endpoint(request: LocationSearchRequest):
         raise HTTPException(status_code=500, detail=f"Location search failed: {str(e)}")
 
 @app.get("/analyze/history", response_model=AnalysisHistoryResponse)
-async def get_analysis_history(limit: int = 50, offset: int = 0):
+async def get_analysis_history(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Get analysis history with pagination
     """
     try:
-        sorted_history = sorted(analysis_history, key=lambda x: x["timestamp"], reverse=True)
-        paginated_history = sorted_history[offset:offset + limit]
+        with session_scope() as session:
+            records = session.scalars(
+                select(Analysis)
+                .where(Analysis.user_id == current_user["id"])
+                .order_by(Analysis.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            ).all()
+            analyses = [serialize_analysis_row(record) for record in records]
 
         return AnalysisHistoryResponse(
             status="success",
-            analyses=paginated_history
+            analyses=analyses
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve history: {str(e)}")
 
 @app.get("/analyze/history/{analysis_id}")
-async def get_analysis_by_id(analysis_id: str):
+async def get_analysis_by_id(
+    analysis_id: str,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Get a specific analysis by ID
     """
-    analysis = next((a for a in analysis_history if a["id"] == analysis_id), None)
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+    with session_scope() as session:
+        analysis = session.scalar(
+            select(Analysis).where(Analysis.id == analysis_id, Analysis.user_id == current_user["id"])
+        )
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
 
-    return AnalysisResponse(
-        status="success",
-        data=analysis
-    )
+        return AnalysisResponse(
+            status="success",
+            data=serialize_analysis_row(analysis, include_result=True)
+        )
 
 @app.delete("/analyze/history/{analysis_id}")
-async def delete_analysis(analysis_id: str):
+async def delete_analysis(
+    analysis_id: str,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Delete a specific analysis from history
     """
-    global analysis_history
-    analysis_history = [a for a in analysis_history if a["id"] != analysis_id]
+    with session_scope() as session:
+        analysis = session.scalar(
+            select(Analysis).where(Analysis.id == analysis_id, Analysis.user_id == current_user["id"])
+        )
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        report = session.scalar(select(Report).where(Report.analysis_id == analysis_id))
+        if report:
+            session.delete(report)
+        session.delete(analysis)
     return {"status": "success", "message": "Analysis deleted"}
+
+
+@app.get("/admin/summary")
+async def admin_summary(current_user: Dict[str, Any] = Depends(require_admin)):
+    with session_scope() as session:
+        users = session.scalars(select(User).order_by(User.created_at.desc())).all()
+        analyses = session.scalars(select(Analysis).order_by(Analysis.created_at.desc())).all()
+        location_counts: Dict[str, int] = {}
+        credit_estimate = 0.0
+        for analysis in analyses:
+            location_counts[analysis.location_name] = location_counts.get(analysis.location_name, 0) + 1
+            credit_estimate += float(analysis.result_json.get("statistics", {}).get("estimated_credit_cost", 0))
+
+        return {
+            "totals": {
+                "users": len(users),
+                "active_users": sum(1 for user in users if user.is_active),
+                "disabled_users": sum(1 for user in users if not user.is_active),
+                "analyses": len(analyses),
+                "estimated_credit_consumption": round(credit_estimate, 2),
+            },
+            "demo_mode": get_demo_mode(session),
+            "most_analyzed_locations": [
+                {"location": location, "count": count}
+                for location, count in sorted(location_counts.items(), key=lambda item: item[1], reverse=True)[:5]
+            ],
+        }
+
+
+@app.get("/admin/users")
+async def admin_users(current_user: Dict[str, Any] = Depends(require_admin)):
+    with session_scope() as session:
+        users = session.scalars(select(User).order_by(User.created_at.desc())).all()
+        return {
+            "users": [
+                {
+                    **serialize_user(user),
+                    "analysis_count": len(user.analyses),
+                }
+                for user in users
+            ]
+        }
+
+
+@app.patch("/admin/users/{user_id}")
+async def update_admin_user(
+    user_id: str,
+    request: AdminUserUpdateRequest,
+    current_user: Dict[str, Any] = Depends(require_admin),
+):
+    with session_scope() as session:
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if request.is_active is not None:
+            if user.id == current_user["id"] and request.is_active is False:
+                raise HTTPException(status_code=400, detail="You cannot disable your own account")
+            user.is_active = request.is_active
+        if request.is_admin is not None:
+            user.is_admin = request.is_admin
+        if request.full_name is not None:
+            user.full_name = request.full_name.strip()
+        return {"message": "User updated", "user": serialize_user(user)}
+
+
+@app.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(
+    user_id: str,
+    request: AdminPasswordResetRequest,
+    current_user: Dict[str, Any] = Depends(require_admin),
+):
+    with session_scope() as session:
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        temporary_password = request.new_password or f"Garuda-{secrets.token_hex(4)}A1"
+        user.password_hash = hash_password(temporary_password)
+        user.must_change_password = request.new_password is None
+        return {
+            "message": "Password reset complete",
+            "temporary_password": temporary_password,
+            "user": serialize_user(user),
+        }
+
+
+@app.post("/admin/demo-mode")
+async def admin_toggle_demo_mode(
+    request: DemoModeRequest,
+    current_user: Dict[str, Any] = Depends(require_admin),
+):
+    with session_scope() as session:
+        enabled = set_demo_mode(session, request.enabled)
+        return {"enabled": enabled}
 
 @app.get("/system/info")
 async def get_system_info():
@@ -1197,7 +1870,12 @@ async def get_system_info():
     }
 
 @app.get("/locations/dates")
-async def get_available_dates_endpoint(lat: float, lon: float, zoom_level: str = "City-Wide (0.025°)"):
+async def get_available_dates_endpoint(
+    lat: float,
+    lon: float,
+    zoom_level: str = "City-Wide (0.025°)",
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Get available satellite imagery dates for a location
     """
@@ -1332,7 +2010,10 @@ async def get_dataset_info():
 # ===== NDVI ANALYSIS ENDPOINT =====
 
 @app.post("/analyze/ndvi", response_model=NDVIAnalysisResponse)
-async def analyze_ndvi(request: NDVIAnalysisRequest):
+async def analyze_ndvi(
+    request: NDVIAnalysisRequest,
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Comprehensive NDVI-based vegetation change detection and analysis
 
@@ -1487,7 +2168,11 @@ async def analyze_ndvi(request: NDVIAnalysisRequest):
         )
 
 @app.get("/analyze/ndvi/{location}/quick")
-async def quick_ndvi_analysis(location: str, zoom_level: str = "City-Wide (0.025°)"):
+async def quick_ndvi_analysis(
+    location: str,
+    zoom_level: str = "City-Wide (0.025°)",
+    current_user: Dict[str, Any] = Depends(require_current_user),
+):
     """
     Quick NDVI analysis with default parameters for rapid assessment
     """

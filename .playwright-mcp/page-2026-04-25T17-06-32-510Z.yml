@@ -1,0 +1,221 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: GL
+        - generic [ref=e7]:
+          - generic [ref=e8]:
+            - heading "Garuda Lens Control Room" [level=1] [ref=e9]
+            - generic [ref=e10]: Demo mode
+          - paragraph [ref=e11]: Protected multi-region change analysis with NDVI overlays, timeline playback, real-world area estimates, PDF reports, and an admin layer for user control.
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - paragraph [ref=e14]: Garuda Lens Admin
+          - paragraph [ref=e15]: admin@garudalens.demo
+        - button "Sign out" [ref=e16]:
+          - img
+          - text: Sign out
+    - generic [ref=e17]:
+      - complementary [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]:
+            - generic [ref=e21]:
+              - generic [ref=e22]: Run Analysis
+              - generic [ref=e23]: Choose a preset or provide a custom location, then persist the run to history.
+            - generic [ref=e24]: RGB mode
+          - generic [ref=e26]:
+            - generic [ref=e27]:
+              - button "Preset" [ref=e28]
+              - button "Custom" [ref=e29]
+            - generic [ref=e30]:
+              - text: Region preset
+              - combobox [ref=e31]:
+                - option "Delhi · India" [selected]
+                - option "Mumbai · India"
+                - option "Bangalore · India"
+                - option "Hyderabad · India"
+                - option "Pune · India"
+                - option "Chennai · India"
+                - option "Kolkata · India"
+                - option "Ahmedabad · India"
+                - option "Jaipur · India"
+                - option "Surat · India"
+                - option "Dubai Marina · United Arab Emirates"
+                - option "Singapore Port · Singapore"
+                - option "Amazon Deforestation Front · Brazil"
+              - generic [ref=e32]:
+                - paragraph [ref=e33]: Dense mixed urban expansion across NCR edges.
+                - paragraph [ref=e34]: India preset, India
+                - generic [ref=e35]:
+                  - generic [ref=e36]: India
+                  - generic [ref=e37]: india
+                  - generic [ref=e38]: Standard (5m)
+            - generic [ref=e39]:
+              - text: Analysis mode
+              - generic [ref=e40]:
+                - button "RGB change" [ref=e41]:
+                  - img [ref=e42]
+                  - text: RGB change
+                - button "NDVI overlay" [ref=e46]:
+                  - img [ref=e47]
+                  - text: NDVI overlay
+            - generic [ref=e50]:
+              - generic [ref=e51]:
+                - text: Zoom window
+                - combobox [ref=e52]:
+                  - option "City-Wide (0.025°)" [selected]
+                  - option "Block-Level (0.01°)"
+                  - option "Zoomed-In (0.005°)"
+              - generic [ref=e53]:
+                - text: Resolution
+                - combobox [ref=e54]:
+                  - option "Coarse (10m)"
+                  - option "Standard (5m)" [selected]
+                  - option "Fine (2.5m)"
+            - generic [ref=e55]:
+              - generic [ref=e56]:
+                - text: Before date
+                - textbox [ref=e57]
+              - generic [ref=e58]:
+                - text: After date
+                - textbox [ref=e59]
+            - generic [ref=e60]:
+              - text: Timeline years
+              - combobox [ref=e61]:
+                - option "3 years"
+                - option "4 years"
+                - option "5 years" [selected]
+                - option "6 years"
+                - option "7 years"
+                - option "8 years"
+            - button "Run persisted analysis" [ref=e62]:
+              - img
+              - text: Run persisted analysis
+        - generic [ref=e63]:
+          - generic [ref=e65]:
+            - generic [ref=e66]: History
+            - generic [ref=e67]: Open, filter, download, or remove previously persisted runs.
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - img
+              - textbox "Search location or category" [ref=e71]
+            - generic [ref=e73]: No saved analyses yet. Run one to populate persistent history.
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: Admin Panel
+              - generic [ref=e78]: Review user adoption, toggle demo mode, and administer analyst accounts.
+            - img [ref=e79]
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - generic [ref=e94]:
+                - paragraph [ref=e95]: Users
+                - paragraph [ref=e96]: "1"
+              - generic [ref=e97]:
+                - paragraph [ref=e98]: Analyses
+                - paragraph [ref=e99]: "0"
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - paragraph [ref=e103]: Sentinel safety switch
+                - paragraph [ref=e104]: Demo mode keeps browser tests and presentations off live credits.
+              - button "Demo enabled" [ref=e105]
+            - paragraph [ref=e107]: Most analyzed locations
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - generic [ref=e111]:
+                  - paragraph [ref=e112]: Garuda Lens Admin
+                  - paragraph [ref=e113]: admin@garudalens.demo
+                - generic [ref=e115]: Admin
+              - paragraph [ref=e116]: 0 saved analyses
+              - generic [ref=e117]:
+                - button "Disable" [ref=e118]
+                - button "Revoke admin" [ref=e119]
+                - button "Reset password" [ref=e120]:
+                  - img
+                  - text: Reset password
+      - main [ref=e121]:
+        - generic [ref=e122]:
+          - generic [ref=e124]:
+            - generic [ref=e125]: Ready for first run
+            - generic [ref=e126]: The dashboard is authenticated and the backend is wired. Pick a preset from the left or enter a custom location to generate the first persisted analysis.
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - generic [ref=e130]:
+                - img [ref=e131]
+                - text: Protected workflows are active
+              - heading "Start with a preset and let the dashboard persist the rest." [level=2] [ref=e136]
+              - paragraph [ref=e137]: Each run stores the result payload, timeline assets, and report metadata. That means the history panel can reopen the full analysis without rerunning the upstream workflow.
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - img [ref=e140]
+                  - paragraph [ref=e144]: RGB, NDVI, and classified overlays live in a single result envelope.
+                - generic [ref=e145]:
+                  - img [ref=e146]
+                  - paragraph [ref=e148]: Area in km², football-field equivalents, and severity are computed server-side.
+                - generic [ref=e149]:
+                  - img [ref=e150]
+                  - paragraph [ref=e152]: Admin mode can shut off live Sentinel spend for demos with one toggle.
+            - generic [ref=e153]:
+              - button "Delhi Dense mixed urban expansion across NCR edges. India india Standard (5m)" [ref=e154]:
+                - generic [ref=e155]:
+                  - generic [ref=e156]:
+                    - paragraph [ref=e157]: Delhi
+                    - paragraph [ref=e158]: Dense mixed urban expansion across NCR edges.
+                  - img [ref=e159]
+                - generic [ref=e161]:
+                  - generic [ref=e162]: India
+                  - generic [ref=e163]: india
+                  - generic [ref=e164]: Standard (5m)
+              - button "Mumbai Coastal development, reclamation, and corridor growth. India india Standard (5m)" [ref=e165]:
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - paragraph [ref=e168]: Mumbai
+                    - paragraph [ref=e169]: Coastal development, reclamation, and corridor growth.
+                  - img [ref=e170]
+                - generic [ref=e172]:
+                  - generic [ref=e173]: India
+                  - generic [ref=e174]: india
+                  - generic [ref=e175]: Standard (5m)
+              - button "Bangalore Peripheral tech-corridor expansion and lake pressure. India india Standard (5m)" [ref=e176]:
+                - generic [ref=e177]:
+                  - generic [ref=e178]:
+                    - paragraph [ref=e179]: Bangalore
+                    - paragraph [ref=e180]: Peripheral tech-corridor expansion and lake pressure.
+                  - img [ref=e181]
+                - generic [ref=e183]:
+                  - generic [ref=e184]: India
+                  - generic [ref=e185]: india
+                  - generic [ref=e186]: Standard (5m)
+              - button "Hyderabad Rapid built-up growth around western IT districts. India india Standard (5m)" [ref=e187]:
+                - generic [ref=e188]:
+                  - generic [ref=e189]:
+                    - paragraph [ref=e190]: Hyderabad
+                    - paragraph [ref=e191]: Rapid built-up growth around western IT districts.
+                  - img [ref=e192]
+                - generic [ref=e194]:
+                  - generic [ref=e195]: India
+                  - generic [ref=e196]: india
+                  - generic [ref=e197]: Standard (5m)
+              - button "Pune Urban sprawl along ring-road and industrial belts. India india Fine (2.5m)" [ref=e198]:
+                - generic [ref=e199]:
+                  - generic [ref=e200]:
+                    - paragraph [ref=e201]: Pune
+                    - paragraph [ref=e202]: Urban sprawl along ring-road and industrial belts.
+                  - img [ref=e203]
+                - generic [ref=e205]:
+                  - generic [ref=e206]: India
+                  - generic [ref=e207]: india
+                  - generic [ref=e208]: Fine (2.5m)
+              - button "Chennai Coastal urban growth and wetland conversion pressure. India india Standard (5m)" [ref=e209]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]:
+                    - paragraph [ref=e212]: Chennai
+                    - paragraph [ref=e213]: Coastal urban growth and wetland conversion pressure.
+                  - img [ref=e214]
+                - generic [ref=e216]:
+                  - generic [ref=e217]: India
+                  - generic [ref=e218]: india
+                  - generic [ref=e219]: Standard (5m)
+  - button "Open Next.js Dev Tools" [ref=e225] [cursor=pointer]:
+    - img [ref=e226]
+  - alert [ref=e229]

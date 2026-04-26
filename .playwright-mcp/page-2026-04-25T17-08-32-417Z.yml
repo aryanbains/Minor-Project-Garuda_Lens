@@ -1,0 +1,71 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - generic [ref=e8]: GL
+            - generic [ref=e9]:
+              - paragraph [ref=e10]: Garuda Lens
+              - paragraph [ref=e11]: Satellite change intelligence for live demos and field work
+          - link "Back to overview" [ref=e12] [cursor=pointer]:
+            - /url: /
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - img [ref=e15]
+            - text: Authenticated workspace with history, reports, and admin controls
+          - heading "Review land-use change with presets, NDVI overlays, and exportable reports." [level=1] [ref=e17]
+          - paragraph [ref=e18]: Sign in to unlock protected Sentinel workflows, run multi-region analyses, compare timelines, and manage demo mode so classroom reviews never consume live credits unexpectedly.
+        - generic [ref=e19]:
+          - generic [ref=e20]:
+            - img [ref=e22]
+            - heading "Multi-region presets" [level=2] [ref=e26]
+            - paragraph [ref=e27]: Delhi, Pune, Dubai Marina, Amazon frontiers, and custom coordinates in one control panel.
+          - generic [ref=e28]:
+            - img [ref=e30]
+            - heading "NDVI and category overlays" [level=2] [ref=e33]
+            - paragraph [ref=e34]: Switch between RGB, vegetation health, and classified urban-water-bare land changes.
+          - generic [ref=e35]:
+            - img [ref=e37]
+            - heading "History and PDF export" [level=2] [ref=e39]
+            - paragraph [ref=e40]: Every run is persisted, replayable, and available as a branded Garuda Lens report.
+      - generic [ref=e41]:
+        - paragraph [ref=e42]: Featured launch presets
+        - generic [ref=e43]:
+          - generic [ref=e44]: Delhi
+          - generic [ref=e45]: Mumbai
+          - generic [ref=e46]: Bangalore
+          - generic [ref=e47]: Hyderabad
+          - generic [ref=e48]: Pune
+          - generic [ref=e49]: Chennai
+          - generic [ref=e50]: Kolkata
+          - generic [ref=e51]: Ahmedabad
+    - generic [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - img [ref=e56]
+          - text: Secure analyst access
+        - generic [ref=e59]:
+          - generic [ref=e60]: Sign in
+          - generic [ref=e61]: Use your analyst credentials to open the protected dashboard.
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - button "Sign in" [ref=e64]
+          - button "Sign up" [ref=e65]
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - text: Email
+            - textbox "analyst@garuda-lens.demo" [ref=e68]
+          - generic [ref=e69]:
+            - text: Password
+            - textbox "Minimum 8 characters" [ref=e70]
+          - button "Open dashboard" [ref=e71]:
+            - text: Open dashboard
+            - img
+        - generic [ref=e72]:
+          - paragraph [ref=e73]: Seeded admin account
+          - paragraph [ref=e74]: "Email: admin@garudalens.demo"
+          - paragraph [ref=e75]: "Password: Admin@12345"
+  - button "Open Next.js Dev Tools" [ref=e81] [cursor=pointer]:
+    - img [ref=e82]
+  - alert [ref=e85]
