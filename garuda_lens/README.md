@@ -1,4 +1,4 @@
-# Garuda Lens - Interactive Map Interface
+# Drishya AI - Interactive Map Interface
 
 A Next.js application featuring an intelligent map interface with natural language queries, property price analysis, and climate risk visualization.
 

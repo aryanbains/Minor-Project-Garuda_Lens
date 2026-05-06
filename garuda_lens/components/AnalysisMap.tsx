@@ -3,7 +3,7 @@
 /**
  * AnalysisMap
  * -----------
- * OpenStreetMap (Leaflet / react-leaflet) map used inside the Garuda Lens
+ * OpenStreetMap (Leaflet / react-leaflet) map used inside the Drishya AI
  * dashboard.  Shows:
  *   • All location presets as soft circle-markers with labels.
  *   • The currently selected location highlighted in accent green.

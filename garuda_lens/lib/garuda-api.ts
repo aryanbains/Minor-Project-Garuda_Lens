@@ -172,17 +172,67 @@ export interface AdminUser extends GarudaUser {
   analysis_count: number;
 }
 
+function normalizeErrorDetail(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => normalizeErrorDetail(item))
+      .filter((item): item is string => Boolean(item));
+
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
+
+  if (value && typeof value === "object") {
+    const payload = value as Record<string, unknown>;
+
+    if (typeof payload.msg === "string") {
+      const loc = Array.isArray(payload.loc)
+        ? payload.loc.map((part) => String(part)).join(" -> ")
+        : "";
+
+      return loc ? `${loc}: ${payload.msg}` : payload.msg;
+    }
+
+    const nested = normalizeErrorDetail(
+      payload.detail ?? payload.message ?? payload.error
+    );
+    if (nested) {
+      return nested;
+    }
+
+    const entries = Object.entries(payload)
+      .map(([key, item]) => {
+        const text = normalizeErrorDetail(item);
+        return text ? `${key}: ${text}` : null;
+      })
+      .filter((item): item is string => Boolean(item));
+
+    return entries.length > 0 ? entries.join(", ") : null;
+  }
+
+  return null;
+}
+
 async function extractError(response: Response): Promise<string> {
   try {
     const payload = (await response.json()) as {
-      detail?: string;
-      message?: string;
-      error?: string;
+      detail?: unknown;
+      message?: unknown;
+      error?: unknown;
     };
+
     return (
-      payload.detail ||
-      payload.message ||
-      payload.error ||
+      normalizeErrorDetail(payload.detail) ||
+      normalizeErrorDetail(payload.message) ||
+      normalizeErrorDetail(payload.error) ||
       `${response.status} ${response.statusText}`
     );
   } catch {

@@ -12,6 +12,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   startTransition,
   useCallback,
@@ -23,7 +24,6 @@ import {
 import {
   Activity,
   AlertTriangle,
-  ArrowRight,
   BarChart3,
   CheckCircle2,
   ChevronDown,
@@ -98,6 +98,30 @@ interface AnalysisFormState {
   timelineYears: number;
 }
 
+interface PromptQueryResponse {
+  city?: string;
+  summary?: string;
+  insights?: string[];
+  results?: Array<{
+    ward?: string;
+  }>;
+  filters?: {
+    timeRange?: string;
+    priceChangePercent?: string;
+    riskIncrease?: boolean;
+    query?: string;
+    naturalLanguageQuery?: string;
+  };
+  meta?: {
+    processingTime?: string;
+    resultsCount?: number;
+    aiProcessed?: boolean;
+    geminiUsed?: boolean;
+  };
+  error?: string;
+  message?: string;
+}
+
 const ZOOM_OPTIONS = [
   "City-Wide (0.025°)",
   "Block-Level (0.01°)",
@@ -105,6 +129,18 @@ const ZOOM_OPTIONS = [
 ];
 const RESOLUTION_OPTIONS = ["Coarse (10m)", "Standard (5m)", "Fine (2.5m)"];
 const TIMELINE_OPTIONS = [3, 4, 5, 6, 7, 8];
+const CITY_COORDINATES: Record<string, { lat: string; lon: string }> = {
+  delhi: { lat: "28.6139", lon: "77.2090" },
+  mumbai: { lat: "19.0760", lon: "72.8777" },
+  bangalore: { lat: "12.9716", lon: "77.5946" },
+  bengaluru: { lat: "12.9716", lon: "77.5946" },
+  pune: { lat: "18.5204", lon: "73.8567" },
+  hyderabad: { lat: "17.3850", lon: "78.4867" },
+  ahmedabad: { lat: "23.0225", lon: "72.5714" },
+  chennai: { lat: "13.0827", lon: "80.2707" },
+  kolkata: { lat: "22.5726", lon: "88.3639" },
+  jaipur: { lat: "26.9124", lon: "75.7873" },
+};
 
 const EMPTY_FORM: AnalysisFormState = {
   usePreset: true,
@@ -216,6 +252,21 @@ function presetTags(p: LocationPreset) {
 function defaultImageView(r: AnalysisResult): ImageViewKey {
   if (r.analysis_mode === "ndvi" && r.images.ndvi_overlay) return "ndvi_overlay";
   return "overlay";
+}
+
+function pickTimelineYears(timeRange?: string): number | null {
+  if (!timeRange) return null;
+  const years = timeRange.match(/\d{4}/g);
+  if (!years || years.length === 0) return null;
+
+  const startYear = Number(years[0]);
+  if (Number.isNaN(startYear)) return null;
+
+  const nowYear = new Date().getFullYear();
+  const rawYears = Math.max(1, nowYear - startYear);
+  return TIMELINE_OPTIONS.reduce((closest, value) =>
+    Math.abs(value - rawYears) < Math.abs(closest - rawYears) ? value : closest
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -612,15 +663,10 @@ function TimelineModal({
 // Main component
 // ---------------------------------------------------------------------------
 export default function GarudaDashboard() {
+  const router = useRouter();
+
   // Session
   const [sessionState, setSessionState] = useState<SessionState>("loading");
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [authForm, setAuthForm] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-  });
-  const [authSubmitting, setAuthSubmitting] = useState(false);
   const [user, setUser] = useState<GarudaUser | null>(null);
 
   // Presets & form
@@ -631,6 +677,9 @@ export default function GarudaDashboard() {
   const [currentResult, setCurrentResult] = useState<AnalysisResult | null>(null);
   const [showResultDrawer, setShowResultDrawer] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [promptText, setPromptText] = useState("");
+  const [promptSubmitting, setPromptSubmitting] = useState(false);
+  const [promptResult, setPromptResult] = useState<PromptQueryResponse | null>(null);
 
   // Sidebar
   const [activeTab, setActiveTab] = useState<SidebarTab>("analyse");
@@ -691,20 +740,23 @@ export default function GarudaDashboard() {
     let cancelled = false;
     async function boot() {
       try {
-        const presetsPayload = await garudaApi.getPresets();
+        const [presetsPayload, currentUser] = await Promise.all([
+          garudaApi.getPresets(),
+          garudaApi.getCurrentUser(),
+        ]);
         if (cancelled) return;
+
         setPresets(presetsPayload.presets);
         if (presetsPayload.presets[0]) {
           setForm((f) =>
             f.presetId ? f : applyPreset(f, presetsPayload.presets[0])
           );
         }
-        const u = await garudaApi.getCurrentUser();
-        if (cancelled) return;
-        if (u) {
-          setUser(u);
+
+        if (currentUser) {
+          setUser(currentUser);
           setSessionState("authenticated");
-          await loadPrivateData(u);
+          await loadPrivateData(currentUser);
         } else {
           setSessionState("unauthenticated");
         }
@@ -718,39 +770,11 @@ export default function GarudaDashboard() {
     };
   }, [loadPrivateData]);
 
-  // ---------------------------------------------------------------------------
-  // Auth
-  // ---------------------------------------------------------------------------
-  async function handleAuth(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthSubmitting(true);
-    setBanner(null);
-    try {
-      const res =
-        authMode === "login"
-          ? await garudaApi.login({
-              email: authForm.email.trim(),
-              password: authForm.password,
-            })
-          : await garudaApi.register({
-              full_name: authForm.fullName.trim(),
-              email: authForm.email.trim(),
-              password: authForm.password,
-            });
-      setUser(res.user);
-      setSessionState("authenticated");
-      setAuthForm({ fullName: "", email: "", password: "" });
-      showBanner({ tone: "success", text: res.message });
-      await loadPrivateData(res.user);
-    } catch (err) {
-      showBanner({
-        tone: "error",
-        text: err instanceof Error ? err.message : "Auth failed.",
-      });
-    } finally {
-      setAuthSubmitting(false);
+  useEffect(() => {
+    if (sessionState === "unauthenticated") {
+      router.replace("/auth");
     }
-  }
+  }, [router, sessionState]);
 
   async function handleLogout() {
     try {
@@ -766,7 +790,7 @@ export default function GarudaDashboard() {
     setAdminSummary(null);
     setAdminUsers([]);
     setSessionState("unauthenticated");
-    showBanner({ tone: "info", text: "Session closed." });
+    router.replace("/auth");
   }
 
   // ---------------------------------------------------------------------------
@@ -780,6 +804,105 @@ export default function GarudaDashboard() {
   function handleMapPresetClick(id: string) {
     handlePresetSelect(id);
     setActiveTab("analyse");
+  }
+
+  async function interpretPrompt() {
+    const query = promptText.trim();
+    if (!query) {
+      showBanner({
+        tone: "error",
+        text: "Enter a prompt for the AI assistant.",
+      });
+      return;
+    }
+
+    setPromptSubmitting(true);
+    setBanner(null);
+
+    try {
+      const requestInit: RequestInit = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query }),
+      };
+
+      let response = await fetch("/api/gemini-query", requestInit);
+      let payload = (await response.json()) as PromptQueryResponse;
+
+      if (!response.ok) {
+        response = await fetch("/api/query", requestInit);
+        payload = (await response.json()) as PromptQueryResponse;
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.error || payload.message || "Prompt processing failed.");
+      }
+
+      setPromptResult(payload);
+
+      const requestedCity = payload.city?.trim() || "";
+      const normalizedCity = requestedCity.toLowerCase();
+      const matchedPreset = presets.find((preset) =>
+        preset.label.toLowerCase().includes(normalizedCity)
+      );
+      const cityCoordinates = CITY_COORDINATES[normalizedCity];
+      const inferredMode = /\b(ndvi|vegetation|greenness|chlorophyll)\b/i.test(query)
+        ? "ndvi"
+        : /\b(rgb|change|construction|expansion)\b/i.test(query)
+        ? "rgb"
+        : form.mode;
+      const inferredTimelineYears = pickTimelineYears(payload.filters?.timeRange);
+
+      setForm((current) => {
+        let next: AnalysisFormState = {
+          ...current,
+          mode: inferredMode,
+          timelineYears: inferredTimelineYears ?? current.timelineYears,
+        };
+
+        if (matchedPreset) {
+          next = applyPreset(next, matchedPreset);
+          next.usePreset = true;
+          next.presetId = matchedPreset.id;
+          next.locationName = matchedPreset.label;
+          next.latitude = "";
+          next.longitude = "";
+          return next;
+        }
+
+        return {
+          ...next,
+          usePreset: false,
+          presetId: "",
+          locationName: requestedCity ? `${requestedCity}, India` : current.locationName,
+          latitude: cityCoordinates?.lat ?? current.latitude,
+          longitude: cityCoordinates?.lon ?? current.longitude,
+        };
+      });
+
+      if (!matchedPreset && requestedCity) {
+        setForm((current) => ({
+          ...current,
+          usePreset: false,
+        }));
+      }
+
+      showBanner({
+        tone: "success",
+        text: requestedCity
+          ? `Prompt understood. Analysis prepared for ${requestedCity}.`
+          : "Prompt understood. Review the prepared analysis settings.",
+      });
+    } catch (error) {
+      showBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Prompt processing failed.",
+      });
+    } finally {
+      setPromptSubmitting(false);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -974,151 +1097,18 @@ export default function GarudaDashboard() {
       <div className="flex h-screen items-center justify-center bg-[#f5f1e8]">
         <div className="flex items-center gap-3 rounded-full border bg-white px-5 py-3 text-sm text-slate-600 shadow-sm">
           <LoaderCircle className="h-4 w-4 animate-spin text-[#2c6e62]" />
-          Loading Garuda Lens…
+          Loading Drishya AI…
         </div>
       </div>
     );
   }
 
-  // ============================================================
-  // Auth gate — map blurred in background
-  // ============================================================
   if (sessionState === "unauthenticated" || !user) {
     return (
-      <div className="relative h-screen overflow-hidden">
-        {/* Map in background, greyed */}
-        <div className="absolute inset-0 opacity-25 grayscale">
-          <AnalysisMap
-            presets={presets}
-            selectedPresetId={presets[0]?.id ?? null}
-            analysisResult={null}
-          />
-        </div>
-        <div className="absolute inset-0 bg-[#153b36]/75 backdrop-blur-sm" />
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-          {/* Brand */}
-          <div className="mb-5 flex items-center gap-3 text-white">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f3d8a8] text-lg font-black text-[#153b36]">
-              GL
-            </div>
-            <div>
-              <p className="text-lg font-bold tracking-tight leading-none">
-                Garuda Lens
-              </p>
-              <p className="mt-0.5 text-xs text-white/60">
-                Satellite change intelligence
-              </p>
-            </div>
-          </div>
-
-          {/* Card */}
-          <div className="w-full max-w-[360px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-            {/* Tab */}
-            <div className="border-b border-slate-100 p-4">
-              <SegmentControl
-                options={[
-                  { value: "login", label: "Sign in" },
-                  { value: "register", label: "Sign up" },
-                ]}
-                value={authMode}
-                onChange={(v) => setAuthMode(v as AuthMode)}
-              />
-            </div>
-
-            <form onSubmit={handleAuth} className="space-y-4 p-5">
-              {banner ? (
-                <div
-                  className={`rounded-lg border px-3 py-2 text-xs ${bannerCls(
-                    banner.tone
-                  )}`}
-                >
-                  {banner.text}
-                </div>
-              ) : null}
-
-              {authMode === "register" ? (
-                <Field label="Full name">
-                  <StyledInput
-                    value={authForm.fullName}
-                    onChange={(e) =>
-                      setAuthForm((f) => ({ ...f, fullName: e.target.value }))
-                    }
-                    placeholder="Field analyst"
-                    required
-                    minLength={2}
-                  />
-                </Field>
-              ) : null}
-
-              <Field label="Email">
-                <StyledInput
-                  type="email"
-                  value={authForm.email}
-                  onChange={(e) =>
-                    setAuthForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                  placeholder="analyst@garudalens.demo"
-                  required
-                />
-              </Field>
-
-              <Field label="Password">
-                <StyledInput
-                  type="password"
-                  value={authForm.password}
-                  onChange={(e) =>
-                    setAuthForm((f) => ({ ...f, password: e.target.value }))
-                  }
-                  placeholder="Min 8 characters"
-                  required
-                  minLength={8}
-                />
-              </Field>
-
-              <button
-                type="submit"
-                disabled={authSubmitting}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#153b36] text-sm font-bold text-white transition hover:bg-[#1b4c45] disabled:opacity-60"
-              >
-                {authSubmitting ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : authMode === "login" ? (
-                  <>
-                    Open dashboard{" "}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </>
-                ) : (
-                  <>
-                    Create account{" "}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="border-t border-slate-100 px-5 py-3">
-              <p className="text-[10px] text-slate-400">
-                Demo admin —{" "}
-                <span className="font-mono">admin@garudalens.demo</span> /{" "}
-                <span className="font-mono">Admin@12345</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Preset chips */}
-          {presets.length > 0 ? (
-            <div className="mt-5 flex flex-wrap justify-center gap-1.5">
-              {presets.slice(0, 9).map((p) => (
-                <span
-                  key={p.id}
-                  className="rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[10px] text-white/70"
-                >
-                  {p.label}
-                </span>
-              ))}
-            </div>
-          ) : null}
+      <div className="flex h-screen items-center justify-center bg-[#f5f1e8]">
+        <div className="flex items-center gap-3 rounded-full border bg-white px-5 py-3 text-sm text-slate-600 shadow-sm">
+          <LoaderCircle className="h-4 w-4 animate-spin text-[#2c6e62]" />
+          Redirecting to sign in…
         </div>
       </div>
     );
@@ -1137,11 +1127,11 @@ export default function GarudaDashboard() {
         <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#153b36] text-sm font-black text-[#f3d8a8]">
-              GL
+              DAI
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-slate-900 leading-none">
-                Garuda Lens
+                Drishya AI
               </p>
               <div className="mt-0.5 flex items-center gap-1.5">
                 <span
@@ -1232,6 +1222,98 @@ export default function GarudaDashboard() {
           {/* ---- ANALYSE ---- */}
           {activeTab === "analyse" ? (
             <div className="space-y-4 px-4 py-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      Prompt box
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Describe the area or signal you want. AI will interpret it and prefill the analysis.
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-[#eef5f4] p-2 text-[#153b36]">
+                    <Search className="h-4 w-4" />
+                  </div>
+                </div>
+
+                <textarea
+                  value={promptText}
+                  onChange={(e) => setPromptText(e.target.value)}
+                  placeholder="Example: Show NDVI-focused change detection for Delhi with a 5 year view"
+                  className="mt-3 h-24 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#2c6e62] focus:ring-2 focus:ring-[#2c6e62]/10"
+                />
+
+                <button
+                  type="button"
+                  disabled={promptSubmitting}
+                  onClick={interpretPrompt}
+                  className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-[#153b36] text-sm font-semibold text-white transition hover:bg-[#1b4c45] disabled:opacity-60"
+                >
+                  {promptSubmitting ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Understanding prompt…
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4" />
+                      Let AI prepare this
+                    </>
+                  )}
+                </button>
+
+                {promptResult ? (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-slate-900">
+                        {promptResult.city ? `${promptResult.city} insight` : "AI interpretation"}
+                      </p>
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                        {promptResult.meta?.processingTime ?? "live"}
+                      </span>
+                    </div>
+
+                    {promptResult.summary ? (
+                      <p className="mt-2 text-xs leading-5 text-slate-600">
+                        {promptResult.summary}
+                      </p>
+                    ) : null}
+
+                    {promptResult.insights && promptResult.insights.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {promptResult.insights.slice(0, 3).map((insight, index) => (
+                          <div
+                            key={`${insight}-${index}`}
+                            className="rounded-lg bg-white px-2.5 py-2 text-[11px] leading-5 text-slate-600"
+                          >
+                            {insight}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {promptResult.filters?.priceChangePercent ? (
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
+                          Price {promptResult.filters.priceChangePercent}%
+                        </span>
+                      ) : null}
+                      {promptResult.filters?.timeRange ? (
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
+                          {promptResult.filters.timeRange}
+                        </span>
+                      ) : null}
+                      {typeof promptResult.meta?.resultsCount === "number" ? (
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
+                          {promptResult.meta.resultsCount} matches
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
               <SegmentControl
                 options={[
                   { value: "preset", label: "Preset region" },

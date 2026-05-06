@@ -15,12 +15,12 @@ const garudaMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Garuda Lens",
-    template: "%s | Garuda Lens",
+    default: "Drishya AI",
+    template: "%s | Drishya AI",
   },
   description:
     "Protected satellite change detection workspace with NDVI overlays, timeline playback, PDF reports, saved history, and admin controls.",
-  applicationName: "Garuda Lens",
+  applicationName: "Drishya AI",
 };
 
 export default function RootLayout({

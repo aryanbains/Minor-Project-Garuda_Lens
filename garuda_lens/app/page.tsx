@@ -82,12 +82,12 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#153b36] text-sm font-semibold text-[#f3d8a8]">
-              GL
+              DAI
             </div>
             <div>
-              <p className="text-base font-semibold tracking-tight">Garuda Lens</p>
+              <p className="text-base font-semibold tracking-tight">Drishya AI</p>
               <p className="text-xs text-slate-500">
-                Satellite change intelligence workspace
+                An AI-Powered Satellite Intelligence Platform for Real-Time Change Detection
               </p>
             </div>
           </div>
@@ -99,10 +99,10 @@ export default function HomePage() {
               Coverage
             </a>
             <Link
-              href="/dashboard"
+              href="/auth"
               className="inline-flex items-center rounded-full bg-[#153b36] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1b4c45]"
             >
-              Open Dashboard
+              Sign In
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </div>
@@ -122,7 +122,7 @@ export default function HomePage() {
                 Protected satellite analysis with presets, NDVI overlays, saved history, and admin control.
               </h1>
               <p className="max-w-2xl text-base leading-8 text-slate-600">
-                Garuda Lens is now a secured web workspace, not a public demo. Analysts can sign in,
+                Drishya AI is now a secured web workspace, not a public demo. Analysts can sign in,
                 run multi-region change detection, inspect classified overlays and timelines, export PDF reports,
                 and let admins switch between live and credit-safe demo mode.
               </p>
@@ -130,10 +130,10 @@ export default function HomePage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/dashboard"
+                href="/auth"
                 className="inline-flex items-center rounded-full bg-[#153b36] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1b4c45]"
               >
-                Launch analyst dashboard
+                Sign in to continue
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
               <a
@@ -373,15 +373,15 @@ export default function HomePage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/auth"
               className="inline-flex items-center rounded-full bg-[#153b36] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1b4c45]"
             >
-              Open dashboard
+              Open sign in
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-sm">
               <Users2 className="h-4 w-4 text-[#2c6e62]" />
-              Seeded admin: admin@garudalens.demo
+              Seeded admin: admin@drishyaai.demo
             </div>
           </div>
         </div>
