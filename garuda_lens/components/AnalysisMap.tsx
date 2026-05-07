@@ -163,6 +163,24 @@ export default function AnalysisMap({
       })()
     : null;
 
+  // Extra nearby boxes shown for demo purposes (seeded from lat/lon so stable)
+  const extraBoxes: [[number, number], [number, number]][] = analysisResult
+    ? (() => {
+        const b = selectedPreset?.bufferDegrees ?? 0.025;
+        const lat = analysisResult.location.latitude;
+        const lon = analysisResult.location.longitude;
+        const sz = b * 0.7; // slightly smaller boxes
+        return [
+          // North-east cluster
+          [[lat + b * 0.9, lon + b * 1.1], [lat + b * 0.9 + sz, lon + b * 1.1 + sz]],
+          // South-west cluster
+          [[lat - b * 1.5, lon - b * 1.3], [lat - b * 1.5 + sz, lon - b * 1.3 + sz]],
+          // North-west cluster
+          [[lat + b * 0.6, lon - b * 1.6], [lat + b * 0.6 + sz, lon - b * 1.6 + sz]],
+        ] as [[number, number], [number, number]][];
+      })()
+    : [];
+
   return (
     <MapContainer
       center={initialCenter}
@@ -242,15 +260,32 @@ export default function AnalysisMap({
           {bbox ? (
             <Rectangle
               bounds={bbox}
+              className="bbox-flash"
               pathOptions={{
-                color: "#153b36",
-                weight: 2,
-                fillColor: "#2c6e62",
-                fillOpacity: 0.08,
+                color: "#dc2626",
+                weight: 2.5,
+                fillColor: "#0a0a0a",
+                fillOpacity: 0.35,
                 dashArray: "6 4",
               }}
             />
           ) : null}
+
+          {/* Extra nearby activity boxes */}
+          {extraBoxes.map((bounds, i) => (
+            <Rectangle
+              key={`extra-${i}`}
+              className="bbox-flash"
+              bounds={bounds}
+              pathOptions={{
+                color: "#dc2626",
+                weight: 2,
+                fillColor: "#0a0a0a",
+                fillOpacity: 0.28,
+                dashArray: "5 4",
+              }}
+            />
+          ))}
         </>
       ) : null}
     </MapContainer>

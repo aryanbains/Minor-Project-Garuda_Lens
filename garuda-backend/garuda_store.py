@@ -171,8 +171,8 @@ def init_store() -> None:
             session.add(
                 User(
                     id=new_id(),
-                    email="admin@garudalens.demo",
-                    full_name="Garuda Lens Admin",
+                    email="admin@drishyaai.demo",
+                    full_name="Drishya AI Admin",
                     password_hash=hash_password("Admin@12345"),
                     is_admin=True,
                     is_active=True,

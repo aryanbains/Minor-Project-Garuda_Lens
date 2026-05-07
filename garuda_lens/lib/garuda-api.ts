@@ -1,7 +1,5 @@
-const API_HOST =
-  typeof window === "undefined" ? "127.0.0.1" : window.location.hostname;
 const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_GARUDA_API_URL || `http://${API_HOST}:8000`
+  process.env.NEXT_PUBLIC_GARUDA_API_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 
 const REFRESH_EXCLUDED_PATHS = new Set([

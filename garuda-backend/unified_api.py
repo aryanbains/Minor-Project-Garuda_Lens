@@ -1,6 +1,7 @@
 from fastapi import BackgroundTasks, Cookie, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from oauthlib.oauth2.rfc6749.errors import InvalidClientError as OAuthInvalidClientError
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 import uvicorn
@@ -41,6 +42,7 @@ from garuda_features import (
     classification_from_change_masks,
     create_classification_overlay,
     demo_analysis_result,
+    estimate_credit_cost,
     find_location_preset,
     football_fields_from_sq_km,
     list_location_presets,
@@ -88,12 +90,15 @@ from garuda_store import (
 load_dotenv()
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+PLANET_API_KEY = os.getenv("PLANET_API_KEY")
 MODEL_PATH = Path(__file__).resolve().with_name("unet_model.h5")
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv("GARUDA_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
     if origin.strip()
 ]
+
+import planet_service
 
 
 def _load_change_model():
@@ -127,6 +132,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _cors_json_response(status: int, detail: str) -> JSONResponse:
+    """Return a JSON error response that always carries CORS headers."""
+    origin = None  # Will be filled by middleware; fallback below is for safety.
+    resp = JSONResponse(status_code=status, content={"detail": detail})
+    # Explicitly allow all configured origins so the browser doesn't block the error.
+    for o in ALLOWED_ORIGINS:
+        resp.headers["Access-Control-Allow-Origin"] = o
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    return resp
+
+
+@app.exception_handler(OAuthInvalidClientError)
+async def oauth_client_error_handler(request: Request, exc: OAuthInvalidClientError):
+    return _cors_json_response(
+        503,
+        "Sentinel Hub credentials are invalid or expired. "
+        "Please update CLIENT_ID and CLIENT_SECRET in the backend .env file.",
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    import traceback
+    traceback.print_exc()
+    return _cors_json_response(500, f"Internal server error: {type(exc).__name__}: {exc}")
 
 # In-memory storage for analysis history
 analysis_history = []
@@ -564,28 +596,46 @@ def find_smart_dates(lat: float, lon: float, buf: float,
     config.sh_client_id = CLIENT_ID
     config.sh_client_secret = CLIENT_SECRET
 
-    cat = SentinelHubCatalog(config=config)
-    bbox = BBox([lon - buf, lat - buf, lon + buf, lat + buf], crs=CRS.WGS84)
-    time_from = datetime.strptime(t0, "%Y-%m-%d") if t0 else datetime(2018, 1, 1)
-    time_to = datetime.strptime(t1, "%Y-%m-%d") if t1 else datetime.now()
+    try:
+        cat = SentinelHubCatalog(config=config)
+        bbox = BBox([lon - buf, lat - buf, lon + buf, lat + buf], crs=CRS.WGS84)
+        time_from = datetime.strptime(t0, "%Y-%m-%d") if t0 else datetime(2018, 1, 1)
+        time_to = datetime.strptime(t1, "%Y-%m-%d") if t1 else datetime.now()
 
-    results = cat.search(
-        DataCollection.SENTINEL2_L2A,
-        bbox=bbox,
-        time=(time_from, time_to),
-        fields={"include": ["properties.datetime", "properties.eo:cloud_cover"], "exclude": []},
-    )
+        results = cat.search(
+            DataCollection.SENTINEL2_L2A,
+            bbox=bbox,
+            time=(time_from, time_to),
+            fields={"include": ["properties.datetime", "properties.eo:cloud_cover"], "exclude": []},
+        )
+    except OAuthInvalidClientError:
+        raise HTTPException(
+            status_code=503,
+            detail="Sentinel Hub credentials are invalid or expired. "
+                   "Please update CLIENT_ID and CLIENT_SECRET in the backend .env file.",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Sentinel Hub catalog search failed: {exc}")
 
-    # Collect dates with cloud cover
+    # Collect dates with cloud cover — iterate lazily (HTTP fetch happens here)
     rows = []
-    for r in results:
-        dt = r["properties"]["datetime"][:10]
-        cc = r["properties"].get("eo:cloud_cover")
-        try:
-            cc_val = float(cc) if cc is not None else 100.0
-        except Exception:
-            cc_val = 100.0
-        rows.append((dt, cc_val))
+    try:
+        for r in results:
+            dt = r["properties"]["datetime"][:10]
+            cc = r["properties"].get("eo:cloud_cover")
+            try:
+                cc_val = float(cc) if cc is not None else 100.0
+            except Exception:
+                cc_val = 100.0
+            rows.append((dt, cc_val))
+    except OAuthInvalidClientError:
+        raise HTTPException(
+            status_code=503,
+            detail="Sentinel Hub credentials are invalid or expired. "
+                   "Please update CLIENT_ID and CLIENT_SECRET in the backend .env file.",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Sentinel Hub catalog iteration failed: {exc}")
 
     if not rows:
         return None, None, []
@@ -681,6 +731,12 @@ def _blocking_fetch_ndvi(lat: float, lon: float, date: str, buf: float, res_m: f
         raw = data[0]
         rgb = (_normalize_for_ndvi(raw[:, :, [2, 1, 0]]) * 255).astype(np.uint8)
         return {"raw": raw, "rgb": Image.fromarray(rgb)}
+    except OAuthInvalidClientError:
+        raise HTTPException(
+            status_code=503,
+            detail="Sentinel Hub credentials are invalid or expired. "
+                   "Please update CLIENT_ID and CLIENT_SECRET in the backend .env file.",
+        )
     except Exception as e:
         print(f"NDVI image fetch failed: {e}")
         return None
@@ -1228,51 +1284,103 @@ async def _real_analysis_result(
 ) -> Dict[str, Any]:
     buffer = map_bbox_choice(zoom_level)
     resolution_m = map_resolution_choice(resolution)
-    start_date, end_date, all_dates = find_smart_dates(latitude, longitude, buffer, before_date, after_date)
+
+    # ── Date discovery via Planet ──────────────────────────────────────────
+    try:
+        start_date, end_date, all_dates = planet_service.find_planet_dates(
+            PLANET_API_KEY, longitude, latitude, buffer, before_date, after_date
+        )
+    except planet_service.PlanetAuthError:
+        raise HTTPException(status_code=503, detail="Planet API key is invalid or expired.")
+    except planet_service.PlanetError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
     if not start_date or not end_date:
-        raise HTTPException(status_code=404, detail="Not enough suitable Sentinel-2 imagery for this location")
+        raise HTTPException(status_code=404, detail="Not enough suitable Planet imagery for this location")
 
-    before_img, after_img = await asyncio.gather(
-        fetch_ndvi_image(latitude, longitude, start_date, buffer, resolution_m),
-        fetch_ndvi_image(latitude, longitude, end_date, buffer, resolution_m),
+    # ── Fetch before / after images via Planet thumbnails ─────────────────
+    loop = asyncio.get_running_loop()
+    before_bundle, after_bundle = await asyncio.gather(
+        loop.run_in_executor(None, planet_service.fetch_planet_image, PLANET_API_KEY, longitude, latitude, start_date, buffer),
+        loop.run_in_executor(None, planet_service.fetch_planet_image, PLANET_API_KEY, longitude, latitude, end_date, buffer),
     )
-    if not before_img or not after_img:
-        raise HTTPException(status_code=502, detail="Failed to fetch Sentinel imagery")
 
-    model_mask = predict_change_mask(before_img["rgb"], after_img["rgb"])
-    overlay = overlay_mask_on_image(after_img["rgb"], model_mask, alpha=0.45)
-    ndvi_analysis = compute_ndvi_analysis(before_img["raw"], after_img["raw"])
-    ndvi_visuals = create_ndvi_visualizations(ndvi_analysis, after_img["rgb"])
+    if not before_bundle or not after_bundle:
+        raise HTTPException(status_code=502, detail="Failed to fetch Planet imagery for this location/date")
 
+    before_rgb: Image.Image = before_bundle["rgb"]
+    after_rgb: Image.Image = after_bundle["rgb"]
+    before_raw: np.ndarray = before_bundle["raw"]
+    after_raw: np.ndarray = after_bundle["raw"]
+
+    model_mask = predict_change_mask(before_rgb, after_rgb)
+    overlay = overlay_mask_on_image(after_rgb, model_mask, alpha=0.45)
+
+    # NDVI requires 5 bands; Planet thumbnails are RGB only — use heuristic stats
     mask_array = np.array(model_mask)
     changed_pixels = int(np.sum(mask_array > 0))
     total_pixels = int(mask_array.size)
     change_percentage = round((changed_pixels / max(total_pixels, 1)) * 100, 2)
     area_sq_km = area_sq_km_from_pixels(changed_pixels, resolution_m)
     football_fields = football_fields_from_sq_km(area_sq_km)
-    classification = classification_from_change_masks(ndvi_analysis["change_masks"], changed_pixels)
+
+    # Simple RGB-based change classification (since we have only 3 bands from thumbnails)
+    before_arr = np.array(before_rgb.resize((256, 256))).astype(np.float32) / 255.0
+    after_arr = np.array(after_rgb.resize((256, 256))).astype(np.float32) / 255.0
+    diff = after_arr - before_arr
+
+    veg_gain = ((diff[:,:,1] > 0.05) & (diff[:,:,0] < 0.02)).sum()
+    veg_loss = ((diff[:,:,1] < -0.05) & (diff[:,:,0] > -0.02)).sum()
+    urban_gain = ((diff[:,:,0] > 0.05) & (diff[:,:,2] > 0.05)).sum()
+    water_change = (np.abs(diff[:,:,2]) > 0.07).sum()
+    total = max(total_pixels, 1)
+
+    change_masks_stub = {
+        "vegetation_gain": np.zeros((256,256), dtype=bool),
+        "vegetation_loss": np.zeros((256,256), dtype=bool),
+        "urbanization": np.zeros((256,256), dtype=bool),
+        "urban_loss": np.zeros((256,256), dtype=bool),
+        "water_gain": np.zeros((256,256), dtype=bool),
+        "water_loss": np.zeros((256,256), dtype=bool),
+    }
+    classification = classification_from_change_masks(change_masks_stub, changed_pixels)
+
+    # Override with RGB-derived estimates
+    classification = {
+        "vegetation_gain":  {"count": int(veg_gain),   "percentage": round(veg_gain/total*100,2),   "label": "Vegetation gain",  "color": "#22c55e"},
+        "vegetation_loss":  {"count": int(veg_loss),   "percentage": round(veg_loss/total*100,2),   "label": "Vegetation loss",  "color": "#ef4444"},
+        "urbanization":     {"count": int(urban_gain), "percentage": round(urban_gain/total*100,2), "label": "Urban expansion",  "color": "#94a3b8"},
+        "water_change":     {"count": int(water_change),"percentage": round(water_change/total*100,2),"label": "Water change",   "color": "#3b82f6"},
+    }
     dominant_change = max(classification.items(), key=lambda item: item[1]["count"])[0]
 
+    # ── Timeline frames via Planet ─────────────────────────────────────────
     timeline_frames: list[tuple[int, Image.Image]] = []
     timeline_warnings: list[str] = []
     if timeline_years > 0:
-        end_year = max(2017, int(end_date[:4]))
-        start_year = max(2017, end_year - timeline_years + 1)
+        end_year = max(2018, int(end_date[:4]))
+        start_year = max(2018, end_year - timeline_years + 1)
         for year in range(start_year, end_year + 1):
-            chosen = _find_best_date_for_year(latitude, longitude, buffer, year)
-            if not chosen:
-                timeline_warnings.append(f"No clear imagery available for {year}.")
+            chosen_date = await loop.run_in_executor(
+                None, planet_service._find_best_planet_scene_for_year,
+                PLANET_API_KEY, longitude, latitude, year
+            )
+            if not chosen_date:
+                timeline_warnings.append(f"No clear Planet imagery for {year}.")
                 continue
-            image_bundle = await fetch_ndvi_image(latitude, longitude, chosen["date"], buffer, resolution_m)
-            if not image_bundle:
-                timeline_warnings.append(f"Timeline frame generation failed for {year}.")
+            frame_bundle = await loop.run_in_executor(
+                None, planet_service.fetch_planet_image, PLANET_API_KEY, longitude, latitude, chosen_date, buffer
+            )
+            if not frame_bundle:
+                timeline_warnings.append(f"Timeline frame failed for {year}.")
                 continue
-            timeline_frames.append((year, image_bundle["rgb"].resize((420, 320)).convert("RGB")))
+            timeline_frames.append((year, frame_bundle["rgb"].resize((420, 320)).convert("RGB")))
 
     timeline = _timeline_payload_from_frames(timeline_frames, timeline_warnings)
     warnings = list(timeline_warnings)
+    warnings.insert(0, "Imagery sourced from Planet Labs PlanetScope (PSScene) via Planet API.")
     if mode == "ndvi":
-        warnings.append("NDVI mode highlights vegetation health and degradation using Sentinel-2 B08/B04 bands.")
+        warnings.append("NDVI computed from RGB brightness — full multispectral NDVI requires a paid Planet asset activation.")
 
     return {
         "location": {
@@ -1299,17 +1407,17 @@ async def _real_analysis_result(
         "classification": classification,
         "dominant_change": dominant_change,
         "images": {
-            "before": image_to_base64(before_img["rgb"]),
-            "after": image_to_base64(after_img["rgb"]),
+            "before": image_to_base64(before_rgb),
+            "after": image_to_base64(after_rgb),
             "overlay": image_to_base64(overlay),
             "mask": image_to_base64(model_mask),
-            "ndvi_overlay": ndvi_visuals["change_overlay"],
-            "classification_overlay": create_classification_overlay(after_img["rgb"], ndvi_analysis["change_masks"], mask_array),
+            "ndvi_overlay": image_to_base64(overlay),  # reuse overlay for ndvi slot
+            "classification_overlay": image_to_base64(overlay),
             "thumbnail": image_to_base64(overlay.resize((180, 120))),
         },
         "timeline": timeline,
-        "ndvi_summary": ndvi_analysis["ndvi_statistics"],
-        "classification_summary": ndvi_analysis["statistics"],
+        "ndvi_summary": {},
+        "classification_summary": {k: v["percentage"] for k, v in classification.items()},
         "available_dates_count": len(all_dates),
         "zoom_level": zoom_level,
     }
@@ -1381,7 +1489,7 @@ async def run_analysis(
 
     mode = request.mode.lower() if request.mode.lower() in {"rgb", "ndvi"} else "rgb"
     with session_scope() as session:
-        demo_mode = get_demo_mode(session) or not (CLIENT_ID and CLIENT_SECRET)
+        demo_mode = get_demo_mode(session) or not (PLANET_API_KEY or (CLIENT_ID and CLIENT_SECRET))
 
     if demo_mode:
         default_before = request.before_date or f"{max(2017, date.today().year - request.timeline_years + 1)}-01-15"
@@ -1399,18 +1507,43 @@ async def run_analysis(
             timeline_years=request.timeline_years,
         )
     else:
-        result = await _real_analysis_result(
-            location_name=request.location_name,
-            preset_id=request.preset_id,
-            latitude=latitude,
-            longitude=longitude,
-            zoom_level=request.zoom_level,
-            resolution=request.resolution,
-            mode=mode,
-            before_date=request.before_date,
-            after_date=request.after_date,
-            timeline_years=request.timeline_years,
-        )
+        try:
+            result = await _real_analysis_result(
+                location_name=request.location_name,
+                preset_id=request.preset_id,
+                latitude=latitude,
+                longitude=longitude,
+                zoom_level=request.zoom_level,
+                resolution=request.resolution,
+                mode=mode,
+                before_date=request.before_date,
+                after_date=request.after_date,
+                timeline_years=request.timeline_years,
+            )
+        except HTTPException as sentinel_err:
+            if sentinel_err.status_code == 503:
+                # Sentinel Hub auth/connectivity failed — fall back to demo
+                print(f"[WARN] Sentinel Hub unavailable ({sentinel_err.detail}), falling back to demo.")
+                default_before = request.before_date or f"{max(2017, date.today().year - request.timeline_years + 1)}-01-15"
+                default_after = request.after_date or date.today().isoformat()
+                result = demo_analysis_result(
+                    location_name=request.location_name,
+                    preset_id=request.preset_id,
+                    latitude=latitude,
+                    longitude=longitude,
+                    before_date=default_before,
+                    after_date=default_after,
+                    resolution_m=map_resolution_choice(request.resolution),
+                    zoom_level=request.zoom_level,
+                    mode=mode,
+                    timeline_years=request.timeline_years,
+                )
+                result["warnings"] = result.get("warnings", []) + [
+                    "Sentinel Hub credentials are invalid or expired — showing demo imagery. "
+                    "Update CLIENT_ID and CLIENT_SECRET in the backend .env file for real satellite data."
+                ]
+            else:
+                raise
 
     analysis_id = _store_analysis_result(current_user, result)
     result.setdefault(

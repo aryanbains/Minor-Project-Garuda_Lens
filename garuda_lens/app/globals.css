@@ -171,6 +171,24 @@
     drop-shadow(0 0 20px rgba(255, 68, 68, 0.6));
 }
 
+/* Flashing red boundary for analysis bounding boxes */
+.bbox-flash {
+  animation: bboxRedFlash 1.1s ease-in-out infinite;
+}
+
+@keyframes bboxRedFlash {
+  0%, 100% {
+    stroke-opacity: 1;
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.9));
+  }
+  50% {
+    stroke-opacity: 0.25;
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 2px rgba(220, 38, 38, 0.2));
+  }
+}
+
 /* Enhanced query result indicator */
 .query-result-indicator {
   animation: fadeInScale 0.5s ease-out;
